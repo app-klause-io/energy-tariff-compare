@@ -13,12 +13,10 @@ Every query in `(app)` routes must filter by the user's groupId to enforce data 
 
 ```typescript
 // CORRECT — scoped
-const bookings = await db.select()
-  .from(bookingsTable)
-  .where(and(
-    eq(bookingsTable.groupId, locals.groupId),
-    eq(bookingsTable.cancelled, false),
-  ));
+const bookings = await db
+	.select()
+	.from(bookingsTable)
+	.where(and(eq(bookingsTable.groupId, locals.groupId), eq(bookingsTable.cancelled, false)));
 
 // WRONG — unscoped, returns data from all groups
 const bookings = await db.select().from(bookingsTable);
@@ -31,26 +29,30 @@ Use `db.transaction()` when a mutation needs atomicity:
 ```typescript
 // Booking creation with conflict detection — must be atomic
 const result = await db.transaction(async (tx) => {
-  // Check for conflicts inside the transaction
-  const conflicts = await tx.select()
-    .from(bookingsTable)
-    .where(and(
-      eq(bookingsTable.aircraftId, aircraftId),
-      eq(bookingsTable.cancelled, false),
-      lte(bookingsTable.startTime, endTime),
-      gte(bookingsTable.endTime, startTime),
-    ));
+	// Check for conflicts inside the transaction
+	const conflicts = await tx
+		.select()
+		.from(bookingsTable)
+		.where(
+			and(
+				eq(bookingsTable.aircraftId, aircraftId),
+				eq(bookingsTable.cancelled, false),
+				lte(bookingsTable.startTime, endTime),
+				gte(bookingsTable.endTime, startTime),
+			),
+		);
 
-  if (conflicts.length > 0) {
-    throw new Error('BOOKING_CONFLICT');
-  }
+	if (conflicts.length > 0) {
+		throw new Error('BOOKING_CONFLICT');
+	}
 
-  // Insert inside the same transaction
-  const [booking] = await tx.insert(bookingsTable)
-    .values({ aircraftId, userId, groupId, startTime, endTime, notes })
-    .returning();
+	// Insert inside the same transaction
+	const [booking] = await tx
+		.insert(bookingsTable)
+		.values({ aircraftId, userId, groupId, startTime, endTime, notes })
+		.returning();
 
-  return booking;
+	return booking;
 });
 ```
 
@@ -59,15 +61,18 @@ const result = await db.transaction(async (tx) => {
 Always check if a record exists before using it:
 
 ```typescript
-const [aircraft] = await db.select()
-  .from(aircraftTable)
-  .where(and(
-    eq(aircraftTable.id, aircraftId),
-    eq(aircraftTable.groupId, locals.groupId), // scope check
-  ));
+const [aircraft] = await db
+	.select()
+	.from(aircraftTable)
+	.where(
+		and(
+			eq(aircraftTable.id, aircraftId),
+			eq(aircraftTable.groupId, locals.groupId), // scope check
+		),
+	);
 
 if (!aircraft) {
-  throw error(404, 'Aircraft not found');
+	throw error(404, 'Aircraft not found');
 }
 ```
 
@@ -77,14 +82,11 @@ Use Drizzle's relational queries for joins:
 
 ```typescript
 const bookings = await db.query.bookings.findMany({
-  where: and(
-    eq(bookingsTable.groupId, locals.groupId),
-    eq(bookingsTable.cancelled, false),
-  ),
-  with: {
-    aircraft: true,
-    user: true,
-  },
+	where: and(eq(bookingsTable.groupId, locals.groupId), eq(bookingsTable.cancelled, false)),
+	with: {
+		aircraft: true,
+		user: true,
+	},
 });
 ```
 

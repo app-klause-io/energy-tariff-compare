@@ -6,12 +6,14 @@ description: Create a SvelteKit API route (+server.ts). Use ONLY for webhooks, c
 # API Route Pattern
 
 API routes (`+server.ts`) are ONLY for:
+
 - **Webhooks** (Clerk, Stripe) — external services POST to these
 - **File downloads** (.ics calendar files, CSV exports)
 - **Cron jobs** — Vercel cron hits these endpoints
 - **External API consumers** — if a third-party service needs data
 
 **Never use for:**
+
 - Loading data for a page → use `+page.server.ts` load function
 - Form mutations → use form actions in `+page.server.ts`
 
@@ -24,13 +26,13 @@ import type { RequestHandler } from './$types';
 import { logger } from '$lib/server/logger';
 
 export const POST: RequestHandler = async ({ request }) => {
-  // 1. Verify signature
-  // 2. Parse and validate payload with Zod
-  // 3. Process the event
-  // 4. Return acknowledgement
+	// 1. Verify signature
+	// 2. Parse and validate payload with Zod
+	// 3. Process the event
+	// 4. Return acknowledgement
 
-  logger.info('Webhook received', { type: 'service.event' });
-  return json({ received: true });
+	logger.info('Webhook received', { type: 'service.event' });
+	return json({ received: true });
 };
 ```
 
@@ -41,17 +43,17 @@ export const POST: RequestHandler = async ({ request }) => {
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
-  // 1. Auth check
-  // 2. Fetch data (scoped by groupId)
-  // 3. Generate file content
-  // 4. Return with correct headers
+	// 1. Auth check
+	// 2. Fetch data (scoped by groupId)
+	// 3. Generate file content
+	// 4. Return with correct headers
 
-  return new Response(icsContent, {
-    headers: {
-      'Content-Type': 'text/calendar',
-      'Content-Disposition': `attachment; filename="booking.ics"`,
-    },
-  });
+	return new Response(icsContent, {
+		headers: {
+			'Content-Type': 'text/calendar',
+			'Content-Disposition': `attachment; filename="booking.ics"`,
+		},
+	});
 };
 ```
 

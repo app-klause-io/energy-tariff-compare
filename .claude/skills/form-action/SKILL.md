@@ -23,8 +23,8 @@ src/routes/(app)/{feature}/
 import { z } from 'zod';
 
 export const createItemSchema = z.object({
-  name: z.string().min(1).max(100),
-  groupId: z.string().uuid(),
+	name: z.string().min(1).max(100),
+	groupId: z.string().uuid(),
 });
 ```
 
@@ -42,29 +42,29 @@ import { eq } from 'drizzle-orm';
 import { logger } from '$lib/server/logger';
 
 export const load = async ({ locals }) => {
-  // Always scope by groupId
-  const data = await db.select().from(items).where(eq(items.groupId, locals.groupId));
-  const form = await superValidate(zod(createItemSchema));
-  return { items: data, form };
+	// Always scope by groupId
+	const data = await db.select().from(items).where(eq(items.groupId, locals.groupId));
+	const form = await superValidate(zod(createItemSchema));
+	return { items: data, form };
 };
 
 export const actions = {
-  create: async ({ request, locals }) => {
-    const form = await superValidate(request, zod(createItemSchema));
-    if (!form.valid) return fail(400, { form });
+	create: async ({ request, locals }) => {
+		const form = await superValidate(request, zod(createItemSchema));
+		if (!form.valid) return fail(400, { form });
 
-    try {
-      await db.insert(items).values({
-        ...form.data,
-        groupId: locals.groupId, // Always set from server, never trust client
-      });
-    } catch (e) {
-      logger.error('Failed to create item', { error: e, userId: locals.userId });
-      return fail(500, { form });
-    }
+		try {
+			await db.insert(items).values({
+				...form.data,
+				groupId: locals.groupId, // Always set from server, never trust client
+			});
+		} catch (e) {
+			logger.error('Failed to create item', { error: e, userId: locals.userId });
+			return fail(500, { form });
+		}
 
-    return message(form, 'Item created');
-  },
+		return message(form, 'Item created');
+	},
 };
 ```
 
@@ -72,19 +72,19 @@ export const actions = {
 
 ```svelte
 <script lang="ts">
-  import { superForm } from 'sveltekit-superforms';
+	import { superForm } from 'sveltekit-superforms';
 
-  let { data } = $props();
-  const { form, errors, enhance, submitting } = superForm(data.form);
+	let { data } = $props();
+	const { form, errors, enhance, submitting } = superForm(data.form);
 </script>
 
 <form method="POST" action="?/create" use:enhance>
-  <input name="name" bind:value={$form.name} />
-  {#if $errors.name}<span class="text-red-500 text-sm">{$errors.name}</span>{/if}
+	<input name="name" bind:value={$form.name} />
+	{#if $errors.name}<span class="text-red-500 text-sm">{$errors.name}</span>{/if}
 
-  <button type="submit" disabled={$submitting}>
-    {$submitting ? 'Saving...' : 'Create'}
-  </button>
+	<button type="submit" disabled={$submitting}>
+		{$submitting ? 'Saving...' : 'Create'}
+	</button>
 </form>
 ```
 

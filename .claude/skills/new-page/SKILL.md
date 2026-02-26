@@ -24,9 +24,11 @@ import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 
 export const load: PageServerLoad = async ({ locals }) => {
-  // Always scope queries by groupId
-  // Keep load functions thin — query, shape, return
-  return { /* data */ };
+	// Always scope queries by groupId
+	// Keep load functions thin — query, shape, return
+	return {
+		/* data */
+	};
 };
 ```
 
@@ -35,13 +37,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 ```svelte
 <!-- +page.svelte -->
 <script lang="ts">
-  let { data } = $props();
+	let { data } = $props();
 </script>
 
 <div>
-  <h1 class="text-2xl font-bold text-slate-900">Page Title</h1>
-  <p class="mt-1 text-sm text-slate-500">Description</p>
-  <!-- Use shadcn-svelte components for UI -->
+	<h1 class="text-2xl font-bold text-slate-900">Page Title</h1>
+	<p class="mt-1 text-sm text-slate-500">Description</p>
+	<!-- Use shadcn-svelte components for UI -->
 </div>
 ```
 
@@ -49,8 +51,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 ```typescript
 const navItems = [
-  // ... existing items
-  { href: '/{page-name}', label: 'Label', icon: '🔖' },
+	// ... existing items
+	{ href: '/{page-name}', label: 'Label', icon: '🔖' },
 ];
 ```
 
