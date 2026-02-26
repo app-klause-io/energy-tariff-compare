@@ -5,7 +5,7 @@
 
 <div class="flex min-h-screen flex-col">
 	<header class="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-		<span class="text-xl font-bold text-sky-600">SkyLedger</span>
+		<span class="text-xl font-bold text-sky-600">Shared Wings</span>
 		<div class="flex items-center gap-4">
 			<SignedOut>
 				<a href="/login" class="text-sm font-medium text-slate-600 hover:text-slate-900">Sign in</a>
@@ -30,12 +30,9 @@
 			Book slots, track expenses, split costs, and stay on top of ARC renewals — all in one place.
 			Built for UK co-ownership groups of 2-6 people.
 		</p>
-		<div class="mt-10 flex gap-4">
+		<div class="mt-10">
 			<a href="/signup">
-				<Button size="lg">Start free</Button>
-			</a>
-			<a href="/pricing">
-				<Button variant="outline" size="lg">View pricing</Button>
+				<Button size="lg">Get started</Button>
 			</a>
 		</div>
 	</main>

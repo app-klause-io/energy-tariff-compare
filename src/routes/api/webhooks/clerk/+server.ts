@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		evt = wh.verify(body, {
 			'svix-id': svix_id,
 			'svix-timestamp': svix_timestamp,
-			'svix-signature': svix_signature
+			'svix-signature': svix_signature,
 		}) as WebhookEvent;
 	} catch {
 		throw error(400, 'Invalid webhook signature');
@@ -48,11 +48,11 @@ export const POST: RequestHandler = async ({ request }) => {
 					clerkId: id,
 					email,
 					name,
-					avatarUrl: image_url ?? null
+					avatarUrl: image_url ?? null,
 				})
 				.onConflictDoUpdate({
 					target: users.clerkId,
-					set: { email, name, avatarUrl: image_url ?? null, updatedAt: new Date() }
+					set: { email, name, avatarUrl: image_url ?? null, updatedAt: new Date() },
 				});
 			break;
 		}
@@ -71,17 +71,17 @@ export const POST: RequestHandler = async ({ request }) => {
 				.insert(groups)
 				.values({
 					clerkOrgId: id,
-					name
+					name,
 				})
 				.onConflictDoUpdate({
 					target: groups.clerkOrgId,
-					set: { name, updatedAt: new Date() }
+					set: { name, updatedAt: new Date() },
 				});
 			break;
 		}
 
 		case 'organizationMembership.created': {
-			const { organization, public_user_data } = evt.data;
+			const { organization, public_user_data, role } = evt.data;
 			const orgId = organization.id;
 			const clerkUserId = public_user_data.user_id;
 
@@ -89,13 +89,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			const [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));
 
 			if (group && user) {
-				await db
-					.insert(groupMembers)
-					.values({
-						groupId: group.id,
-						userId: user.id,
-						role: evt.data.role === 'admin' ? 'admin' : 'member'
-					});
+				await db.insert(groupMembers).values({
+					groupId: group.id,
+					userId: user.id,
+					role: role === 'admin' ? 'admin' : 'member',
+				});
 			}
 			break;
 		}
@@ -111,12 +109,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			if (group && user) {
 				await db
 					.delete(groupMembers)
-					.where(
-						and(
-							eq(groupMembers.groupId, group.id),
-							eq(groupMembers.userId, user.id)
-						)
-					);
+					.where(and(eq(groupMembers.groupId, group.id), eq(groupMembers.userId, user.id)));
 			}
 			break;
 		}
@@ -125,8 +118,31 @@ export const POST: RequestHandler = async ({ request }) => {
 	return json({ received: true });
 };
 
-// Type for Clerk webhook events
-interface WebhookEvent {
-	type: string;
-	data: Record<string, any>;
+// Clerk webhook event types
+interface ClerkUserData {
+	id: string;
+	email_addresses: { email_address: string }[];
+	first_name: string | null;
+	last_name: string | null;
+	image_url: string | null;
 }
+
+interface ClerkOrgData {
+	id: string;
+	name: string;
+}
+
+interface ClerkMembershipData {
+	organization: { id: string };
+	public_user_data: { user_id: string };
+	role: string;
+}
+
+type WebhookEvent =
+	| { type: 'user.created' | 'user.updated'; data: ClerkUserData }
+	| { type: 'user.deleted'; data: { id?: string } }
+	| { type: 'organization.created' | 'organization.updated'; data: ClerkOrgData }
+	| {
+			type: 'organizationMembership.created' | 'organizationMembership.deleted';
+			data: ClerkMembershipData;
+	  };
