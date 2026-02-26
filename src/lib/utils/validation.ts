@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EXPENSE_CATEGORIES, COMPLIANCE_TYPES } from '$lib/server/db/schema';
 
 export const createBookingSchema = z
 	.object({
@@ -14,7 +15,7 @@ export const createBookingSchema = z
 
 export const createExpenseSchema = z.object({
 	amount: z.number().int().positive().max(10_000_000, 'Amount cannot exceed £100,000'),
-	category: z.enum(['fuel', 'maintenance', 'insurance', 'hangar', 'landing', 'other']),
+	category: z.enum(EXPENSE_CATEGORIES),
 	description: z.string().min(1).max(200),
 	date: z.string().date(),
 });
@@ -33,7 +34,7 @@ export const createAircraftSchema = z.object({
 
 export const createComplianceItemSchema = z.object({
 	aircraftId: z.string().uuid(),
-	type: z.enum(['arc', 'annual', 'insurance', '50hr', 'ad', 'other']),
+	type: z.enum(COMPLIANCE_TYPES),
 	name: z.string().min(1).max(100),
 	dueDate: z.string().date(),
 	notes: z.string().max(500).optional(),

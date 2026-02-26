@@ -16,23 +16,21 @@ import { relations } from 'drizzle-orm';
 // ============================================================
 // Enums
 // ============================================================
-export const memberRoleEnum = pgEnum('member_role', ['admin', 'member']);
-export const expenseCategoryEnum = pgEnum('expense_category', [
+export const MEMBER_ROLES = ['admin', 'member'] as const;
+export const memberRoleEnum = pgEnum('member_role', MEMBER_ROLES);
+
+export const EXPENSE_CATEGORIES = [
 	'fuel',
 	'maintenance',
 	'insurance',
 	'hangar',
 	'landing',
 	'other',
-]);
-export const complianceTypeEnum = pgEnum('compliance_type', [
-	'arc',
-	'annual',
-	'insurance',
-	'50hr',
-	'ad',
-	'other',
-]);
+] as const;
+export const expenseCategoryEnum = pgEnum('expense_category', EXPENSE_CATEGORIES);
+
+export const COMPLIANCE_TYPES = ['arc', 'annual', 'insurance', '50hr', 'ad', 'other'] as const;
+export const complianceTypeEnum = pgEnum('compliance_type', COMPLIANCE_TYPES);
 
 // ============================================================
 // Users (synced from Clerk via webhook)
@@ -100,7 +98,10 @@ export const aircraft = pgTable(
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at').defaultNow().notNull(),
 	},
-	(t) => [index('aircraft_group_id_idx').on(t.groupId)],
+	(t) => [
+		unique('aircraft_registration_group_unique').on(t.registration, t.groupId),
+		index('aircraft_group_id_idx').on(t.groupId),
+	],
 );
 
 // ============================================================
@@ -156,6 +157,7 @@ export const expenses = pgTable(
 		receiptUrl: text('receipt_url'),
 		date: date('date').notNull(),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at').defaultNow().notNull(),
 	},
 	(t) => [
 		index('expenses_group_id_idx').on(t.groupId),
@@ -179,6 +181,8 @@ export const expenseSplits = pgTable(
 		amount: integer('amount').notNull(), // pence
 		settled: boolean('settled').default(false).notNull(),
 		settledAt: timestamp('settled_at'),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at').defaultNow().notNull(),
 	},
 	(t) => [
 		unique('expense_splits_expense_user_unique').on(t.expenseId, t.userId),
@@ -239,10 +243,12 @@ export const maintenanceLog = pgTable(
 		date: date('date').notNull(),
 		receiptUrl: text('receipt_url'),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at').defaultNow().notNull(),
 	},
 	(t) => [
 		index('maintenance_log_aircraft_id_idx').on(t.aircraftId),
 		index('maintenance_log_group_id_idx').on(t.groupId),
+		index('maintenance_log_compliance_item_id_idx').on(t.complianceItemId),
 	],
 );
 

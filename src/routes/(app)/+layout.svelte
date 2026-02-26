@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { UserButton, OrganizationSwitcher } from 'svelte-clerk/components';
 	import type { Snippet } from 'svelte';
 
@@ -8,12 +7,6 @@
 	}
 
 	let { children }: Props = $props();
-
-	const navItems = [
-		{ href: '/dashboard', label: 'Dashboard', icon: '📊' },
-		{ href: '/calendar', label: 'Calendar', icon: '📅' },
-		{ href: '/settings', label: 'Settings', icon: '⚙️' },
-	];
 </script>
 
 <!-- Desktop: sidebar layout -->
@@ -29,19 +22,7 @@
 		</div>
 
 		<nav class="flex-1 space-y-1 px-3 py-2">
-			{#each navItems as item (item.href)}
-				<a
-					href={item.href}
-					aria-current={$page.url.pathname.startsWith(item.href) ? 'page' : undefined}
-					class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-						{$page.url.pathname.startsWith(item.href)
-						? 'bg-sky-50 text-sky-700'
-						: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}"
-				>
-					<span aria-hidden="true">{item.icon}</span>
-					{item.label}
-				</a>
-			{/each}
+			<!-- Nav items added as features are built -->
 		</nav>
 
 		<div class="border-t border-slate-200 p-4">
@@ -66,20 +47,5 @@
 		<main class="flex-1 overflow-y-auto p-4 lg:p-8">
 			{@render children()}
 		</main>
-
-		<!-- Bottom nav (mobile) -->
-		<nav class="flex border-t border-slate-200 bg-white lg:hidden">
-			{#each navItems as item (item.href)}
-				<a
-					href={item.href}
-					aria-current={$page.url.pathname.startsWith(item.href) ? 'page' : undefined}
-					class="flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium transition-colors
-						{$page.url.pathname.startsWith(item.href) ? 'text-sky-600' : 'text-slate-400 hover:text-slate-600'}"
-				>
-					<span class="text-lg" aria-hidden="true">{item.icon}</span>
-					{item.label}
-				</a>
-			{/each}
-		</nav>
 	</div>
 </div>

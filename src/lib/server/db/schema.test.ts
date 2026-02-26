@@ -20,6 +20,25 @@ describe('schema exports', () => {
 		expect(schema.complianceTypeEnum).toBeDefined();
 	});
 
+	it('exports enum value arrays for Zod reuse', () => {
+		expect(schema.MEMBER_ROLES).toEqual(['admin', 'member']);
+		expect(schema.EXPENSE_CATEGORIES).toEqual([
+			'fuel',
+			'maintenance',
+			'insurance',
+			'hangar',
+			'landing',
+			'other',
+		]);
+		expect(schema.COMPLIANCE_TYPES).toEqual(['arc', 'annual', 'insurance', '50hr', 'ad', 'other']);
+	});
+
+	it('enum arrays match their pgEnum counterparts', () => {
+		expect(schema.MEMBER_ROLES).toEqual(schema.memberRoleEnum.enumValues);
+		expect(schema.EXPENSE_CATEGORIES).toEqual(schema.expenseCategoryEnum.enumValues);
+		expect(schema.COMPLIANCE_TYPES).toEqual(schema.complianceTypeEnum.enumValues);
+	});
+
 	it('exports all relation definitions', () => {
 		expect(schema.usersRelations).toBeDefined();
 		expect(schema.groupsRelations).toBeDefined();

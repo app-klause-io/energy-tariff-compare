@@ -4,15 +4,12 @@ import { Webhook } from 'svix';
 import { db } from '$lib/server/db';
 import { users, groups, groupMembers } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { env } from '$lib/server/env';
+import { logger } from '$lib/server/logger';
 
 // Clerk sends webhook events when users/orgs are created/updated/deleted
 // We sync this data to our Postgres for relational queries
 export const POST: RequestHandler = async ({ request }) => {
-	const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
-	if (!WEBHOOK_SECRET) {
-		throw error(500, 'CLERK_WEBHOOK_SECRET not configured');
-	}
-
 	const svix_id = request.headers.get('svix-id');
 	const svix_timestamp = request.headers.get('svix-timestamp');
 	const svix_signature = request.headers.get('svix-signature');
@@ -25,15 +22,20 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	let evt: WebhookEvent;
 	try {
-		const wh = new Webhook(WEBHOOK_SECRET);
+		const wh = new Webhook(env.CLERK_WEBHOOK_SECRET);
 		evt = wh.verify(body, {
 			'svix-id': svix_id,
 			'svix-timestamp': svix_timestamp,
 			'svix-signature': svix_signature,
 		}) as WebhookEvent;
-	} catch {
+	} catch (err) {
+		logger.warn('Webhook signature verification failed', {
+			error: err instanceof Error ? err.message : 'Unknown error',
+		});
 		throw error(400, 'Invalid webhook signature');
 	}
+
+	logger.info('Clerk webhook received', { eventType: evt.type });
 
 	switch (evt.type) {
 		case 'user.created':
@@ -115,6 +117,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 	}
 
+	logger.info('Clerk webhook processed', { eventType: evt.type });
 	return json({ received: true });
 };
 
