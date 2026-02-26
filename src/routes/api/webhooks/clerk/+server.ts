@@ -4,15 +4,12 @@ import { Webhook } from 'svix';
 import { db } from '$lib/server/db';
 import { users, groups, groupMembers } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { env } from '$lib/server/env';
+import { logger } from '$lib/server/logger';
 
 // Clerk sends webhook events when users/orgs are created/updated/deleted
 // We sync this data to our Postgres for relational queries
 export const POST: RequestHandler = async ({ request }) => {
-	const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
-	if (!WEBHOOK_SECRET) {
-		throw error(500, 'CLERK_WEBHOOK_SECRET not configured');
-	}
-
 	const svix_id = request.headers.get('svix-id');
 	const svix_timestamp = request.headers.get('svix-timestamp');
 	const svix_signature = request.headers.get('svix-signature');
@@ -25,15 +22,20 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	let evt: WebhookEvent;
 	try {
-		const wh = new Webhook(WEBHOOK_SECRET);
+		const wh = new Webhook(env.CLERK_WEBHOOK_SECRET);
 		evt = wh.verify(body, {
 			'svix-id': svix_id,
 			'svix-timestamp': svix_timestamp,
-			'svix-signature': svix_signature
+			'svix-signature': svix_signature,
 		}) as WebhookEvent;
-	} catch {
+	} catch (err) {
+		logger.warn('Webhook signature verification failed', {
+			error: err instanceof Error ? err.message : 'Unknown error',
+		});
 		throw error(400, 'Invalid webhook signature');
 	}
+
+	logger.info('Clerk webhook received', { eventType: evt.type });
 
 	switch (evt.type) {
 		case 'user.created':
@@ -48,11 +50,11 @@ export const POST: RequestHandler = async ({ request }) => {
 					clerkId: id,
 					email,
 					name,
-					avatarUrl: image_url ?? null
+					avatarUrl: image_url ?? null,
 				})
 				.onConflictDoUpdate({
 					target: users.clerkId,
-					set: { email, name, avatarUrl: image_url ?? null, updatedAt: new Date() }
+					set: { email, name, avatarUrl: image_url ?? null, updatedAt: new Date() },
 				});
 			break;
 		}
@@ -71,17 +73,17 @@ export const POST: RequestHandler = async ({ request }) => {
 				.insert(groups)
 				.values({
 					clerkOrgId: id,
-					name
+					name,
 				})
 				.onConflictDoUpdate({
 					target: groups.clerkOrgId,
-					set: { name, updatedAt: new Date() }
+					set: { name, updatedAt: new Date() },
 				});
 			break;
 		}
 
 		case 'organizationMembership.created': {
-			const { organization, public_user_data } = evt.data;
+			const { organization, public_user_data, role } = evt.data;
 			const orgId = organization.id;
 			const clerkUserId = public_user_data.user_id;
 
@@ -89,13 +91,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			const [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));
 
 			if (group && user) {
-				await db
-					.insert(groupMembers)
-					.values({
-						groupId: group.id,
-						userId: user.id,
-						role: evt.data.role === 'admin' ? 'admin' : 'member'
-					});
+				await db.insert(groupMembers).values({
+					groupId: group.id,
+					userId: user.id,
+					role: role === 'admin' ? 'admin' : 'member',
+				});
 			}
 			break;
 		}
@@ -111,22 +111,41 @@ export const POST: RequestHandler = async ({ request }) => {
 			if (group && user) {
 				await db
 					.delete(groupMembers)
-					.where(
-						and(
-							eq(groupMembers.groupId, group.id),
-							eq(groupMembers.userId, user.id)
-						)
-					);
+					.where(and(eq(groupMembers.groupId, group.id), eq(groupMembers.userId, user.id)));
 			}
 			break;
 		}
 	}
 
+	logger.info('Clerk webhook processed', { eventType: evt.type });
 	return json({ received: true });
 };
 
-// Type for Clerk webhook events
-interface WebhookEvent {
-	type: string;
-	data: Record<string, any>;
+// Clerk webhook event types
+interface ClerkUserData {
+	id: string;
+	email_addresses: { email_address: string }[];
+	first_name: string | null;
+	last_name: string | null;
+	image_url: string | null;
 }
+
+interface ClerkOrgData {
+	id: string;
+	name: string;
+}
+
+interface ClerkMembershipData {
+	organization: { id: string };
+	public_user_data: { user_id: string };
+	role: string;
+}
+
+type WebhookEvent =
+	| { type: 'user.created' | 'user.updated'; data: ClerkUserData }
+	| { type: 'user.deleted'; data: { id?: string } }
+	| { type: 'organization.created' | 'organization.updated'; data: ClerkOrgData }
+	| {
+			type: 'organizationMembership.created' | 'organizationMembership.deleted';
+			data: ClerkMembershipData;
+	  };

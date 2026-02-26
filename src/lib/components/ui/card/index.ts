@@ -17,5 +17,5 @@ export {
 	Content,
 	Content as CardContent,
 	Footer,
-	Footer as CardFooter
+	Footer as CardFooter,
 };
