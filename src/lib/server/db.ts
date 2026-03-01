@@ -79,41 +79,27 @@ export async function getFeedback(
 	const sql = neon(getDbUrl());
 	const { limit = 50, offset = 0, rating, since } = options;
 
-	// Build WHERE clause conditions
-	const conditions: string[] = [];
-	const params: unknown[] = [];
+	// Use tagged template syntax — the only reliable way with neon HTTP driver.
+	// Handle filter combinations explicitly to avoid dynamic SQL.
+	let countResult: { count: string }[];
+	let feedback: FeedbackRecord[];
 
-	if (rating) {
-		conditions.push(`rating = $${params.length + 1}`);
-		params.push(rating);
+	if (rating && since) {
+		countResult = await sql`SELECT COUNT(*) as count FROM feedback WHERE rating = ${rating} AND created_at >= ${since}`;
+		feedback = await sql`SELECT id, rating, comment, suggestion, current_provider, would_share, email, wizard_selections, best_tariff, annual_cost, created_at FROM feedback WHERE rating = ${rating} AND created_at >= ${since} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+	} else if (rating) {
+		countResult = await sql`SELECT COUNT(*) as count FROM feedback WHERE rating = ${rating}`;
+		feedback = await sql`SELECT id, rating, comment, suggestion, current_provider, would_share, email, wizard_selections, best_tariff, annual_cost, created_at FROM feedback WHERE rating = ${rating} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+	} else if (since) {
+		countResult = await sql`SELECT COUNT(*) as count FROM feedback WHERE created_at >= ${since}`;
+		feedback = await sql`SELECT id, rating, comment, suggestion, current_provider, would_share, email, wizard_selections, best_tariff, annual_cost, created_at FROM feedback WHERE created_at >= ${since} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+	} else {
+		countResult = await sql`SELECT COUNT(*) as count FROM feedback`;
+		feedback = await sql`SELECT id, rating, comment, suggestion, current_provider, would_share, email, wizard_selections, best_tariff, annual_cost, created_at FROM feedback ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 	}
 
-	if (since) {
-		conditions.push(`created_at >= $${params.length + 1}`);
-		params.push(since);
-	}
-
-	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-	// Get total count
-	const countQuery = `SELECT COUNT(*) as count FROM feedback ${whereClause}`;
-	const countResult = await sql(countQuery, params);
 	const total = Number(countResult[0]?.count ?? 0);
-
-	// Get feedback entries
-	const dataQuery = `
-		SELECT id, rating, comment, suggestion, current_provider,
-		       would_share, email, wizard_selections, best_tariff,
-		       annual_cost, created_at
-		FROM feedback
-		${whereClause}
-		ORDER BY created_at DESC
-		LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-	`;
-
-	const feedback = await sql(dataQuery, [...params, limit, offset]);
-
-	return { feedback: feedback as FeedbackRecord[], total };
+	return { feedback, total };
 }
 
 // --- Tariff storage ---
@@ -253,44 +239,32 @@ export async function getTariffs(
 	options: TariffQueryOptions = {},
 ): Promise<{ tariffs: TariffRecord[]; total: number }> {
 	const sql = neon(getDbUrl());
-	const { limit = 100, offset = 0, provider, region, fuel_type } = options;
+	const { limit = 100, offset = 0 } = options;
+	const provider = options.provider ?? null;
+	const region = options.region ?? null;
+	const fuel_type = options.fuel_type ?? null;
 
-	const conditions: string[] = [];
-	const params: unknown[] = [];
-
-	if (provider) {
-		conditions.push(`provider = $${params.length + 1}`);
-		params.push(provider);
-	}
-
-	if (region) {
-		conditions.push(`region = $${params.length + 1}`);
-		params.push(region);
-	}
-
-	if (fuel_type) {
-		conditions.push(`fuel_type = $${params.length + 1}`);
-		params.push(fuel_type);
-	}
-
-	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-	const countQuery = `SELECT COUNT(*) as count FROM tariffs ${whereClause}`;
-	const countResult = await sql(countQuery, params);
+	// Use tagged template syntax with nullable filter pattern
+	const countResult = await sql`
+		SELECT COUNT(*) as count FROM tariffs
+		WHERE (${provider}::text IS NULL OR provider = ${provider})
+		AND (${region}::text IS NULL OR region = ${region})
+		AND (${fuel_type}::text IS NULL OR fuel_type = ${fuel_type})
+	`;
 	const total = Number(countResult[0]?.count ?? 0);
 
-	const dataQuery = `
+	const tariffs = await sql`
 		SELECT id, provider, tariff_code, tariff_name, region, fuel_type,
 		       payment_method, unit_rate_p, standing_charge_p, day_rate_p,
 		       night_rate_p, peak_rate_p, offpeak_rate_p, rate_data,
 		       valid_from, valid_to, source, fetched_at, created_at
 		FROM tariffs
-		${whereClause}
+		WHERE (${provider}::text IS NULL OR provider = ${provider})
+		AND (${region}::text IS NULL OR region = ${region})
+		AND (${fuel_type}::text IS NULL OR fuel_type = ${fuel_type})
 		ORDER BY provider, region, tariff_name
-		LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+		LIMIT ${limit} OFFSET ${offset}
 	`;
 
-	const tariffs = (await sql(dataQuery, [...params, limit, offset])) as TariffRecord[];
-
-	return { tariffs, total };
+	return { tariffs: tariffs as TariffRecord[], total };
 }
