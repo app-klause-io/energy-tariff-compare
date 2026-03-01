@@ -50,17 +50,28 @@
 		return false;
 	});
 
+	function scrollToTop() {
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
+
 	function startWizard() {
 		showWizard = true;
 		showResults = false;
+		scrollToTop();
 	}
 
 	function goBack() {
-		if (step > 1) step--;
+		if (step > 1) {
+			step--;
+			scrollToTop();
+		}
 	}
 
 	function goNext() {
-		if (step < 3 && canProceed) step++;
+		if (step < 3 && canProceed) {
+			step++;
+			scrollToTop();
+		}
 	}
 
 	async function calculateResults() {
@@ -82,6 +93,7 @@
 
 			results = compareTariffsWithData(profile, data.tariffs);
 			showResults = true;
+			scrollToTop();
 		} catch {
 			calculationError = 'Unable to calculate results. Please check your inputs and try again.';
 		} finally {
@@ -92,6 +104,7 @@
 	function resetWizard() {
 		showWizard = false;
 		showResults = false;
+		scrollToTop();
 		step = 1;
 		property = {
 			type: null,
@@ -132,11 +145,7 @@
 	>
 		{#if showWizard}
 			<button
-				onclick={() => {
-					showWizard = false;
-					showResults = false;
-					step = 1;
-				}}
+				onclick={resetWizard}
 				class="text-sm font-medium text-slate-500 hover:text-slate-700"
 			>
 				<svg
