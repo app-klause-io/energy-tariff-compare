@@ -1,0 +1,122 @@
+import { logger } from '$lib/server/logger';
+import { getTariffs, ensureTariffsTable } from '$lib/server/db';
+import type { TariffRecord } from '$lib/server/db';
+import type { Tariff, TariffType, TimeOfUseRate } from '$lib/types/tariff';
+import type { UkRegion } from '$lib/types/wizard';
+
+let tableReady = false;
+
+/**
+ * Convert a stored tariff record from the database into the Tariff format
+ * used by the comparison engine. This bridges the ingested data with the
+ * existing frontend comparison logic.
+ */
+export function convertStoredToTariff(record: TariffRecord, region: UkRegion): Tariff | null {
+	const rateData = record.rate_data as Record<string, unknown> | null;
+	const tariffType = (rateData?.type as TariffType) ?? 'flat';
+
+	let rates: TimeOfUseRate[];
+
+	// Try to build rates from half-hourly data if available
+	const halfHourlyRates = rateData?.half_hourly_rates as
+		| { slot: number; retail_p_kwh?: number; rate_p?: number }[]
+		| undefined;
+
+	if (halfHourlyRates && halfHourlyRates.length > 0) {
+		// Build time-of-use rates from half-hourly data by grouping consecutive equal rates
+		const slotRates = new Array<number>(48).fill(0);
+		for (const hr of halfHourlyRates) {
+			const rate = hr.retail_p_kwh ?? hr.rate_p ?? 0;
+			if (hr.slot >= 0 && hr.slot < 48) {
+				slotRates[hr.slot] = rate;
+			}
+		}
+
+		rates = [];
+		let currentRate = slotRates[0];
+		let startSlot = 0;
+
+		for (let i = 1; i < 48; i++) {
+			if (Math.abs(slotRates[i] - currentRate) > 0.01) {
+				rates.push({ startSlot, endSlot: i, unitRate: currentRate });
+				currentRate = slotRates[i];
+				startSlot = i;
+			}
+		}
+		rates.push({ startSlot, endSlot: 48, unitRate: currentRate });
+	} else if (record.unit_rate_p != null) {
+		// Single flat rate
+		rates = [{ startSlot: 0, endSlot: 48, unitRate: Number(record.unit_rate_p) }];
+	} else {
+		return null;
+	}
+
+	const supplier =
+		record.provider === 'octopus'
+			? 'Octopus Energy'
+			: record.provider === 'ofgem_cap'
+				? 'Price Cap'
+				: record.provider === 'elexon'
+					? 'Wholesale'
+					: record.provider;
+
+	return {
+		id: `stored-${record.provider}-${record.id}`,
+		name: record.tariff_name,
+		supplier,
+		type: tariffType,
+		standingCharge: record.standing_charge_p != null ? Number(record.standing_charge_p) : 0,
+		rates,
+		region,
+	};
+}
+
+/**
+ * Fetch stored tariffs for a given region and convert them to the Tariff format
+ * used by the comparison engine. Returns tariffs from all providers that have
+ * data for the specified region.
+ */
+export async function fetchStoredTariffsForRegion(region: UkRegion): Promise<Tariff[]> {
+	if (!tableReady) {
+		try {
+			await ensureTariffsTable();
+			tableReady = true;
+		} catch (err) {
+			logger.warn('storedTariffs.tableCheckFailed', {
+				error: err instanceof Error ? err.message : String(err),
+			});
+			return [];
+		}
+	}
+
+	try {
+		const result = await getTariffs({
+			region,
+			fuel_type: 'electricity',
+			limit: 500,
+		});
+
+		const tariffs: Tariff[] = [];
+
+		for (const record of result.tariffs) {
+			const tariff = convertStoredToTariff(record, region);
+			if (tariff) {
+				tariffs.push(tariff);
+			}
+		}
+
+		logger.info('storedTariffs.fetched', {
+			region,
+			total: result.total,
+			converted: tariffs.length,
+		});
+
+		return tariffs;
+	} catch (err) {
+		logger.warn('storedTariffs.fetchFailed', {
+			region,
+			error: err instanceof Error ? err.message : String(err),
+		});
+		return [];
+	}
+}
