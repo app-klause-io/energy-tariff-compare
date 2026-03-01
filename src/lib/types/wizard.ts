@@ -29,6 +29,19 @@ export interface ApplianceSubOption {
 	options: { label: string; value: string }[];
 }
 
+export interface UsagePreset {
+	label: string;
+	value: string;
+	multiplier: number;
+	kwhPerYear: number;
+}
+
+export interface UsageOptions {
+	question: string;
+	presets: [UsagePreset, UsagePreset, UsagePreset];
+	defaultValue: string;
+}
+
 export type ApplianceCategory =
 	| 'heating'
 	| 'transport'
@@ -47,6 +60,8 @@ export interface Appliance {
 	description?: string;
 	subOptions?: ApplianceSubOption;
 	selectedSubOption?: string;
+	usageOptions?: UsageOptions;
+	selectedUsage?: string;
 }
 
 export type UsagePattern = 'morning' | 'daytime' | 'evening' | 'night';
