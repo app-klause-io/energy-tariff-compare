@@ -3,8 +3,9 @@ import { logger } from './logger';
 
 export function validateBearerToken(request: Request): void {
 	const expectedToken = process.env.FEEDBACK_API_TOKEN;
+	const cronSecret = process.env.CRON_SECRET;
 
-	if (!expectedToken) {
+	if (!expectedToken && !cronSecret) {
 		logger.error('auth.noTokenConfigured');
 		throw error(500, 'Server configuration error');
 	}
@@ -16,7 +17,11 @@ export function validateBearerToken(request: Request): void {
 	}
 
 	const token = authHeader.substring(7);
-	if (token !== expectedToken) {
+
+	// Accept either the FEEDBACK_API_TOKEN (for manual calls) or CRON_SECRET (for Vercel Cron)
+	const isValidToken = (expectedToken && token === expectedToken) || (cronSecret && token === cronSecret);
+
+	if (!isValidToken) {
 		throw error(401, 'Unauthorized: Invalid token');
 	}
 }
