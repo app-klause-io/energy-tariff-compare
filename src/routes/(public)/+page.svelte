@@ -36,6 +36,7 @@
 	let dailyProfile = $state<number[]>([]);
 	let isCalculating = $state(false);
 	let calculationError = $state<string | null>(null);
+	let lastUpdated = $state<string | undefined>(undefined);
 
 	let canProceed = $derived.by(() => {
 		if (step === 1) {
@@ -81,6 +82,7 @@
 			const data = await response.json();
 
 			results = compareTariffsWithData(profile, data.tariffs);
+			lastUpdated = data.lastUpdated;
 			showResults = true;
 		} catch {
 			calculationError = 'Unable to calculate results. Please check your inputs and try again.';
@@ -115,8 +117,8 @@
 <svelte:head>
 	<title
 		>{showResults
-			? 'Your Results — Energy Tariff Compare'
-			: 'Energy Tariff Compare — Find Your Cheapest Energy Deal'}</title
+			? 'Your Results — Best Energy Tariffs UK'
+			: 'Best Energy Tariffs UK — Compare & Find Your Cheapest Tariff'}</title
 	>
 	<meta
 		name="description"
@@ -165,7 +167,7 @@
 					Free, no sign-up needed
 				</div>
 				<h1 class="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-					Find your cheapest energy tariff
+					Compare UK Energy Tariffs
 					<span class="text-emerald-600">in 2 minutes.</span>
 				</h1>
 				<p class="mt-6 text-lg leading-relaxed text-slate-500">
@@ -206,6 +208,7 @@
 				{results}
 				{annualKwh}
 				{dailyProfile}
+				{lastUpdated}
 				onReset={resetWizard}
 				wizardSelections={{
 					property,

@@ -4,35 +4,100 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="theme-color" content="#059669" />
+		<meta name="robots" content="index, follow" />
 		<meta
 			name="description"
-			content="Compare UK energy tariffs based on your actual usage. Built for EV owners, heat pump homes, and anyone tired of generic comparison sites."
+			content="Compare UK energy tariffs based on your home, appliances, and usage. Find the cheapest electricity tariff for EV owners, heat pump users, and more. Free comparison tool."
 		/>
+		<title>Best Energy Tariffs UK — Compare & Find Your Cheapest Tariff | bestenergytariffs.co.uk</title>
 		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
-		<link rel="canonical" href="https://energy-tariff-compare.vercel.app/" />
+		<link rel="canonical" href="https://www.bestenergytariffs.co.uk" />
+
+		<!-- Preconnect to external APIs -->
+		<link rel="preconnect" href="https://api.octopus.energy" />
 
 		<!-- Open Graph -->
 		<meta property="og:type" content="website" />
-		<meta property="og:title" content="Energy Tariff Compare — Find Your Cheapest Energy Deal" />
+		<meta property="og:title" content="Best Energy Tariffs UK — Compare & Find Your Cheapest Tariff" />
 		<meta
 			property="og:description"
-			content="Compare UK energy tariffs based on your actual usage. Built for EV owners, heat pump homes, and anyone tired of generic comparison sites."
+			content="Compare UK energy tariffs based on your home, appliances, and usage. Find the cheapest electricity tariff for EV owners, heat pump users, and more. Free comparison tool."
 		/>
-		<meta property="og:url" content="https://energy-tariff-compare.vercel.app/" />
-		<meta property="og:site_name" content="Energy Tariff Compare" />
-		<meta property="og:image" content="https://energy-tariff-compare.vercel.app/og-image.png" />
+		<meta property="og:url" content="https://www.bestenergytariffs.co.uk" />
+		<meta property="og:site_name" content="Best Energy Tariffs" />
+		<meta property="og:image" content="https://www.bestenergytariffs.co.uk/og-image.png" />
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
 		<meta property="og:locale" content="en_GB" />
 
 		<!-- Twitter Card -->
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="Energy Tariff Compare — Find Your Cheapest Energy Deal" />
+		<meta name="twitter:title" content="Best Energy Tariffs UK — Compare & Find Your Cheapest Tariff" />
 		<meta
 			name="twitter:description"
-			content="Compare UK energy tariffs based on your actual usage. Built for EV owners, heat pump homes, and anyone tired of generic comparison sites."
+			content="Compare UK energy tariffs based on your home, appliances, and usage. Find the cheapest electricity tariff for EV owners, heat pump users, and more. Free comparison tool."
 		/>
-		<meta name="twitter:image" content="https://energy-tariff-compare.vercel.app/og-image.png" />
+		<meta name="twitter:image" content="https://www.bestenergytariffs.co.uk/og-image.png" />
+
+		<!-- JSON-LD Structured Data: WebApplication -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebApplication",
+				"name": "Best Energy Tariffs",
+				"description": "Compare UK energy tariffs based on your home, appliances, and usage. Find the cheapest electricity tariff for EV owners, heat pump users, and more.",
+				"url": "https://www.bestenergytariffs.co.uk",
+				"applicationCategory": "FinanceApplication",
+				"operatingSystem": "Any",
+				"offers": {
+					"@type": "Offer",
+					"price": "0",
+					"priceCurrency": "GBP"
+				}
+			}
+		</script>
+
+		<!-- JSON-LD Structured Data: FAQPage -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "FAQPage",
+				"mainEntity": [
+					{
+						"@type": "Question",
+						"name": "How do I find the cheapest energy tariff?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Use our free comparison tool to enter details about your property, appliances, and usage habits. We estimate your actual consumption profile and compare it against live tariff rates from UK energy suppliers to find the cheapest option for your specific situation."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "What is a time-of-use tariff?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "A time-of-use (ToU) tariff charges different rates for electricity depending on when you use it. Off-peak hours (typically overnight) are cheaper, while peak hours (usually evenings) cost more. Tariffs like Octopus Go and Economy 7 are popular examples. They can save you money if you can shift usage to cheaper periods."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Should EV owners use a special tariff?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Yes, EV owners can save significantly with tariffs designed for overnight charging, such as Octopus Go or Intelligent Octopus Go. These offer very cheap electricity rates during off-peak hours (typically 00:30–05:30), which is when most EV charging happens. Our tool calculates exactly how much you could save."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "How much can I save by switching tariff?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Savings depend on your usage profile. Households with EVs, heat pumps, or flexible usage patterns can save hundreds of pounds per year by switching to a time-of-use tariff. Our comparison tool estimates your annual cost on each tariff so you can see the exact potential savings."
+						}
+					}
+				]
+			}
+		</script>
 
 		%sveltekit.head%
 	</head>
