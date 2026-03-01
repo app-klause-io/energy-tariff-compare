@@ -57,10 +57,12 @@
 
 	function goBack() {
 		if (step > 1) step--;
+		window.scrollTo(0, 0);
 	}
 
 	function goNext() {
 		if (step < 3 && canProceed) step++;
+		window.scrollTo(0, 0);
 	}
 
 	async function calculateResults() {
