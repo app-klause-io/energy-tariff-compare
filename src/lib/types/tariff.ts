@@ -46,7 +46,7 @@ export interface ComparisonResult {
 	tariff: Tariff;
 	/** Estimated annual cost in pounds */
 	annualCost: number;
-	/** Savings in pounds compared to the baseline tariff (negative = more expensive) */
+	/** Savings in pounds compared to the most expensive tariff (0 = baseline, positive = cheaper than baseline) */
 	savingsVsBaseline: number;
 	/** Breakdown of costs */
 	breakdown: {
