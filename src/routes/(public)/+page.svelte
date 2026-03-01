@@ -4,6 +4,7 @@
 	import { DEFAULT_APPLIANCES } from '$lib/data/appliances';
 	import { calculateConsumption } from '$lib/models/consumption';
 	import { compareTariffsWithData } from '$lib/models/comparison';
+	import { track } from '@vercel/analytics';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import WizardStepper from '$lib/components/WizardStepper.svelte';
 	import WizardNav from '$lib/components/WizardNav.svelte';
@@ -58,6 +59,7 @@
 		showWizard = true;
 		showResults = false;
 		scrollToTop();
+		track('funnel_start');
 	}
 
 	function goBack() {
@@ -69,6 +71,7 @@
 
 	function goNext() {
 		if (step < 3 && canProceed) {
+			track('funnel_step_complete', { step, region: property.region ?? undefined });
 			step++;
 			scrollToTop();
 		}
@@ -79,6 +82,7 @@
 
 		isCalculating = true;
 		calculationError = null;
+		track('funnel_step_complete', { step: 3, region: property.region });
 
 		try {
 			const profile = calculateConsumption(property, appliances, habits);
@@ -94,8 +98,16 @@
 			results = compareTariffsWithData(profile, data.tariffs);
 			showResults = true;
 			scrollToTop();
+
+			track('funnel_results_viewed', {
+				region: property.region,
+				annualKwh: Math.round(profile.annualKwh),
+				tariffCount: results.length,
+				bestSupplier: results[0]?.tariff.supplier ?? 'unknown',
+			});
 		} catch {
 			calculationError = 'Unable to calculate results. Please check your inputs and try again.';
+			track('funnel_error', { step: 3, region: property.region });
 		} finally {
 			isCalculating = false;
 		}
