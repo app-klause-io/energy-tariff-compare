@@ -8,110 +8,44 @@ import { logger } from '$lib/server/logger';
 let tableReady = false;
 
 /**
- * Supplier pages on TheEnergyShop.com that publish tariff tables.
- * Each has an HTML table with columns:
- *   Tariff Name | Electricity Unit Price | Electricity Standing Charge | Gas Unit Price | Gas Standing Charge
+ * Supplier configurations for TheEnergyShop.com JSON API.
  *
- * Note: Standing charges show 0.00p (national average pages don't have regional data).
- * Unit rates are national averages — close enough to rank tariffs correctly.
+ * Data is fetched from their internal Umbraco API endpoint:
+ *   /umbraco/surface/GuidesBackend/GetSupplierTariffs?supplierId={id}
+ *
+ * The supplier pages load tariff tables via client-side JavaScript,
+ * so we call the underlying JSON API directly instead of scraping HTML.
+ *
+ * Supplier IDs are extracted from the `data-id` attribute on each
+ * supplier's page table element.
  */
-const SUPPLIER_PAGES: {
-	slug: string;
+const SUPPLIERS: {
+	supplierId: number;
 	provider: string;
 	providerName: string;
-	tableIndex: number;
 }[] = [
-	{ slug: 'british-gas', provider: 'british-gas', providerName: 'British Gas', tableIndex: 0 },
-	{ slug: 'eon', provider: 'eon', providerName: 'E.ON Next', tableIndex: 0 },
-	{ slug: 'edf-energy', provider: 'edf', providerName: 'EDF', tableIndex: 0 },
-	{ slug: 'ovo-energy', provider: 'ovo', providerName: 'OVO Energy', tableIndex: 0 },
-	{
-		slug: 'scottish-power',
-		provider: 'scottish-power',
-		providerName: 'Scottish Power',
-		tableIndex: 0,
-	},
-	{
-		slug: 'outfox-energy',
-		provider: 'outfox',
-		providerName: 'Outfox the Market',
-		tableIndex: 1,
-	},
+	{ supplierId: 5, provider: 'british-gas', providerName: 'British Gas' },
+	{ supplierId: 150, provider: 'eon', providerName: 'E.ON Next' },
+	{ supplierId: 68, provider: 'edf', providerName: 'EDF' },
+	{ supplierId: 76, provider: 'ovo', providerName: 'OVO Energy' },
+	{ supplierId: 16, provider: 'scottish-power', providerName: 'Scottish Power' },
+	{ supplierId: 149, provider: 'outfox', providerName: 'Outfox the Market' },
 ];
 
-interface ParsedTariff {
+/**
+ * Shape of the JSON returned by TheEnergyShop's API.
+ */
+interface EnergyShopTariff {
+	supplierName: string;
 	tariffName: string;
-	elecUnitRate: number;
-	gasUnitRate: number;
-	elecStandingCharge: number;
-	gasStandingCharge: number;
-}
-
-/**
- * Parse a pence value from text like "26.74p" or "0.00p".
- */
-function parsePence(text: string): number {
-	const cleaned = text.replace(/[^0-9.]/g, '');
-	return parseFloat(cleaned) || 0;
-}
-
-/**
- * Parse the HTML table from a supplier page.
- * Tables have a header row then data rows with tab-separated cells.
- */
-function parseSupplierTable(html: string, tableIndex: number): ParsedTariff[] {
-	const tariffs: ParsedTariff[] = [];
-
-	// Extract table contents using regex — these are standard HTML tables
-	const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
-	const tables: string[] = [];
-	let match;
-	while ((match = tableRegex.exec(html)) !== null) {
-		tables.push(match[1]);
-	}
-
-	if (tableIndex >= tables.length) return tariffs;
-
-	const tableHtml = tables[tableIndex];
-
-	// Extract rows
-	const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-	const rows: string[] = [];
-	while ((match = rowRegex.exec(tableHtml)) !== null) {
-		rows.push(match[1]);
-	}
-
-	// Skip header row (index 0)
-	for (let i = 1; i < rows.length; i++) {
-		const cellRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
-		const cells: string[] = [];
-		while ((match = cellRegex.exec(rows[i])) !== null) {
-			// Strip HTML tags from cell content
-			cells.push(match[1].replace(/<[^>]*>/g, '').trim());
-		}
-
-		// Expected: Tariff Name | Elec Unit Price | Elec Standing Charge | Gas Unit Price | Gas Standing Charge
-		if (cells.length >= 5) {
-			const tariffName = cells[0];
-			const elecUnitRate = parsePence(cells[1]);
-			const elecStandingCharge = parsePence(cells[2]);
-			const gasUnitRate = parsePence(cells[3]);
-			const gasStandingCharge = parsePence(cells[4]);
-
-			// Skip entries with zero unit rates (invalid data)
-			if (elecUnitRate > 0) {
-				tariffs.push({
-					tariffName,
-					elecUnitRate,
-					gasUnitRate,
-					elecStandingCharge,
-					gasStandingCharge,
-				});
-			}
-		}
-	}
-
-	return tariffs;
+	serviceType: string;
+	standingChargeElec: number;
+	yearlyStandingChargeElec: number;
+	standingChargeGas: number;
+	yearlyStandingChargeGas: number;
+	price1Elec: number;
+	price1Gas: number;
+	wayOutFlag: boolean;
 }
 
 /**
@@ -154,9 +88,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	const supplierSummaries: { supplier: string; tariffs: number }[] = [];
 
 	try {
-		for (const supplier of SUPPLIER_PAGES) {
+		for (const supplier of SUPPLIERS) {
 			try {
-				const url = `https://www.theenergyshop.com/energy-suppliers/${supplier.slug}`;
+				const url = `https://www.theenergyshop.com/umbraco/surface/GuidesBackend/GetSupplierTariffs?supplierId=${supplier.supplierId}`;
 				const response = await fetch(url, {
 					headers: {
 						'User-Agent':
@@ -165,51 +99,58 @@ export const POST: RequestHandler = async ({ request }) => {
 				});
 
 				if (!response.ok) {
-					throw new Error(`HTTP ${response.status} for ${url}`);
+					throw new Error(`HTTP ${response.status} for ${supplier.providerName}`);
 				}
 
-				const html = await response.text();
-				const parsed = parseSupplierTable(html, supplier.tableIndex);
+				const data: EnergyShopTariff[] = await response.json();
 
-				if (parsed.length === 0) {
+				if (data.length === 0) {
 					logger.warn('ingest.energyshop.noTariffs', {
 						supplier: supplier.provider,
-						slug: supplier.slug,
+						supplierId: supplier.supplierId,
 					});
 					continue;
 				}
 
 				const rows: TariffRow[] = [];
 
-				for (const tariff of parsed) {
+				for (const tariff of data) {
 					const { type, tariffClass } = classifyTariffType(tariff.tariffName);
 					const tariffCode = makeTariffCode(supplier.provider, tariff.tariffName);
 
+					// Standing charge: yearlyStandingCharge is in pence/year,
+					// divide by 365 to get pence/day
+					const elecStandingCharge = tariff.yearlyStandingChargeElec > 0
+						? Math.round((tariff.yearlyStandingChargeElec / 365) * 100) / 100
+						: undefined;
+					const gasStandingCharge = tariff.yearlyStandingChargeGas > 0
+						? Math.round((tariff.yearlyStandingChargeGas / 365) * 100) / 100
+						: undefined;
+
 					// Electricity tariff — stored with 'national' region sentinel
-					// (NULL would break the UNIQUE constraint on re-ingest)
-					rows.push({
-						provider: supplier.provider,
-						tariff_code: tariffCode + '-ELEC',
-						tariff_name: tariff.tariffName,
-						region: 'national',
-						fuel_type: 'electricity',
-						payment_method: 'direct_debit',
-						unit_rate_p: tariff.elecUnitRate,
-						standing_charge_p:
-							tariff.elecStandingCharge > 0 ? tariff.elecStandingCharge : undefined,
-						rate_data: {
-							type,
-							source_provider_name: supplier.providerName,
-							tariff_class: tariffClass,
-							gas_unit_rate_p: tariff.gasUnitRate > 0 ? tariff.gasUnitRate : undefined,
-							gas_standing_charge_p:
-								tariff.gasStandingCharge > 0 ? tariff.gasStandingCharge : undefined,
-						},
-						source: 'theenergyshop',
-					});
+					if (tariff.price1Elec > 0) {
+						rows.push({
+							provider: supplier.provider,
+							tariff_code: tariffCode + '-ELEC',
+							tariff_name: tariff.tariffName,
+							region: 'national',
+							fuel_type: 'electricity',
+							payment_method: 'direct_debit',
+							unit_rate_p: tariff.price1Elec,
+							standing_charge_p: elecStandingCharge,
+							rate_data: {
+								type,
+								source_provider_name: supplier.providerName,
+								tariff_class: tariffClass,
+								gas_unit_rate_p: tariff.price1Gas > 0 ? tariff.price1Gas : undefined,
+								gas_standing_charge_p: gasStandingCharge,
+							},
+							source: 'theenergyshop',
+						});
+					}
 
 					// Gas tariff
-					if (tariff.gasUnitRate > 0) {
+					if (tariff.price1Gas > 0) {
 						rows.push({
 							provider: supplier.provider,
 							tariff_code: tariffCode + '-GAS',
@@ -217,9 +158,8 @@ export const POST: RequestHandler = async ({ request }) => {
 							region: 'national',
 							fuel_type: 'gas',
 							payment_method: 'direct_debit',
-							unit_rate_p: tariff.gasUnitRate,
-							standing_charge_p:
-								tariff.gasStandingCharge > 0 ? tariff.gasStandingCharge : undefined,
+							unit_rate_p: tariff.price1Gas,
+							standing_charge_p: gasStandingCharge,
 							rate_data: {
 								type,
 								source_provider_name: supplier.providerName,
@@ -235,12 +175,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
 				supplierSummaries.push({
 					supplier: supplier.providerName,
-					tariffs: parsed.length,
+					tariffs: data.length,
 				});
 
 				logger.info('ingest.energyshop.supplierDone', {
 					supplier: supplier.provider,
-					tariffsParsed: parsed.length,
+					tariffsParsed: data.length,
 					rowsUpserted: upserted,
 				});
 			} catch (err) {
