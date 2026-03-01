@@ -9,6 +9,7 @@
 		annualKwh: number;
 		dailyProfile: number[];
 		onReset: () => void;
+		lastUpdated?: string;
 		wizardSelections?: {
 			property: PropertyDetails;
 			appliances: { id: string; name: string; enabled: boolean }[];
@@ -16,7 +17,8 @@
 		};
 	}
 
-	let { results, annualKwh, dailyProfile, onReset, wizardSelections }: Props = $props();
+	let { results, annualKwh, dailyProfile, onReset, lastUpdated, wizardSelections }: Props =
+		$props();
 
 	let bestResult = $derived(results[0]);
 
@@ -245,6 +247,43 @@
 	<div class="mt-8">
 		<h3 class="text-lg font-semibold text-slate-900">All Tariffs Compared</h3>
 		<p class="mt-1 text-sm text-slate-500">Ranked from cheapest to most expensive</p>
+
+		<!-- Disclaimer and Last Updated -->
+		<div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+			<div class="flex items-start gap-2">
+				<svg
+					class="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
+				</svg>
+				<div class="flex-1">
+					<p class="text-xs text-amber-800">
+						Standard variable tariffs shown at Ofgem price cap rate (Q1 2026). Actual rates may
+						vary by region and payment method.
+					</p>
+					{#if lastUpdated}
+						<p class="mt-1 text-xs text-amber-700">
+							Last updated: {new Date(lastUpdated).toLocaleDateString('en-GB', {
+								day: 'numeric',
+								month: 'short',
+								year: 'numeric',
+								hour: '2-digit',
+								minute: '2-digit',
+							})}
+						</p>
+					{/if}
+				</div>
+			</div>
+		</div>
 
 		<div class="mt-4 space-y-3" role="list" aria-label="All tariffs ranked by cost">
 			{#each results as result, index (result.tariff.name)}

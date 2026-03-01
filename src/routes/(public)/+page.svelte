@@ -36,6 +36,7 @@
 	let dailyProfile = $state<number[]>([]);
 	let isCalculating = $state(false);
 	let calculationError = $state<string | null>(null);
+	let lastUpdated = $state<string | undefined>(undefined);
 
 	let canProceed = $derived.by(() => {
 		if (step === 1) {
@@ -81,6 +82,7 @@
 			const data = await response.json();
 
 			results = compareTariffsWithData(profile, data.tariffs);
+			lastUpdated = data.lastUpdated;
 			showResults = true;
 		} catch {
 			calculationError = 'Unable to calculate results. Please check your inputs and try again.';
@@ -206,6 +208,7 @@
 				{results}
 				{annualKwh}
 				{dailyProfile}
+				{lastUpdated}
 				onReset={resetWizard}
 				wizardSelections={{
 					property,
