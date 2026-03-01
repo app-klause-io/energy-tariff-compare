@@ -29,12 +29,22 @@ export interface ApplianceSubOption {
 	options: { label: string; value: string }[];
 }
 
+export type ApplianceCategory =
+	| 'heating'
+	| 'transport'
+	| 'generation'
+	| 'kitchen'
+	| 'bathroom'
+	| 'other';
+
 export interface Appliance {
 	id: string;
 	name: string;
 	icon: string;
+	category: ApplianceCategory;
 	enabled: boolean;
 	annualKwhEstimate: number;
+	description?: string;
 	subOptions?: ApplianceSubOption;
 	selectedSubOption?: string;
 }
