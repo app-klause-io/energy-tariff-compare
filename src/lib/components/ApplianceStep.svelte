@@ -16,7 +16,9 @@
 		{ key: 'other', label: 'Other' },
 	];
 
-	let expandedCategories = $state<Set<ApplianceCategory>>(new Set(['heating', 'transport', 'generation', 'kitchen', 'bathroom', 'other']));
+	let expandedCategories = $state<Set<ApplianceCategory>>(
+		new Set(['heating', 'transport', 'generation', 'kitchen', 'bathroom', 'other']),
+	);
 
 	let groupedAppliances = $derived.by(() => {
 		const groups: { key: ApplianceCategory; label: string; items: Appliance[] }[] = [];
@@ -47,6 +49,7 @@
 			...appliance,
 			enabled: !appliance.enabled,
 			selectedSubOption: !appliance.enabled ? appliance.subOptions?.value : undefined,
+			selectedUsage: !appliance.enabled ? appliance.usageOptions?.defaultValue : undefined,
 		};
 	}
 
@@ -54,6 +57,25 @@
 		const index = appliances.findIndex((a) => a.id === id);
 		if (index === -1) return;
 		appliances[index] = { ...appliances[index], selectedSubOption: value };
+	}
+
+	function selectUsage(id: string, value: string) {
+		const index = appliances.findIndex((a) => a.id === id);
+		if (index === -1) return;
+		appliances[index] = { ...appliances[index], selectedUsage: value };
+	}
+
+	function formatKwh(kwh: number): string {
+		const abs = Math.abs(kwh);
+		const formatted = abs >= 1000 ? `${(abs / 1000).toFixed(1).replace(/\.0$/, '')}k` : `${abs}`;
+		return `${kwh < 0 ? '-' : '~'}${formatted} kWh/yr`;
+	}
+
+	function getEffectiveKwh(appliance: Appliance): number {
+		if (!appliance.usageOptions) return appliance.annualKwhEstimate;
+		const selected = appliance.selectedUsage ?? appliance.usageOptions.defaultValue;
+		const preset = appliance.usageOptions.presets.find((p) => p.value === selected);
+		return preset?.kwhPerYear ?? appliance.annualKwhEstimate;
 	}
 
 	function enabledCountForCategory(key: ApplianceCategory): number {
@@ -81,13 +103,17 @@
 					<div class="flex items-center gap-2">
 						<span class="text-sm font-semibold text-slate-700">{group.label}</span>
 						{#if enabledCount > 0}
-							<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+							<span
+								class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"
+							>
 								{enabledCount} selected
 							</span>
 						{/if}
 					</div>
 					<svg
-						class="h-4 w-4 text-slate-400 transition-transform duration-200 {isExpanded ? 'rotate-180' : ''}"
+						class="h-4 w-4 text-slate-400 transition-transform duration-200 {isExpanded
+							? 'rotate-180'
+							: ''}"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -102,6 +128,7 @@
 					<div class="border-t border-slate-100 px-3 pb-3 pt-2">
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							{#each group.items as appliance (appliance.id)}
+								{@const effectiveKwh = getEffectiveKwh(appliance)}
 								<div
 									class="rounded-lg border-2 transition-colors duration-150
 									{appliance.enabled ? 'border-emerald-600 bg-emerald-50' : 'border-slate-200 bg-white'}"
@@ -120,9 +147,7 @@
 												<span class="block text-xs text-slate-400">{appliance.description}</span>
 											{/if}
 											<span class="block text-xs text-slate-500">
-												{appliance.annualKwhEstimate > 0
-													? '+'
-													: ''}{appliance.annualKwhEstimate.toLocaleString()}
+												{effectiveKwh > 0 ? '+' : ''}{effectiveKwh.toLocaleString()}
 												kWh/yr
 											</span>
 										</div>
@@ -140,7 +165,9 @@
 
 									{#if appliance.enabled && appliance.subOptions}
 										<div class="border-t border-emerald-200 px-3 pb-3 pt-2">
-											<p class="mb-2 text-xs font-medium text-slate-700">{appliance.subOptions.label}</p>
+											<p class="mb-2 text-xs font-medium text-slate-700">
+												{appliance.subOptions.label}
+											</p>
 											<div class="flex flex-wrap gap-2">
 												{#each appliance.subOptions.options as opt (opt.value)}
 													<button
@@ -153,6 +180,38 @@
 														aria-pressed={appliance.selectedSubOption === opt.value}
 													>
 														{opt.label}
+													</button>
+												{/each}
+											</div>
+										</div>
+									{/if}
+
+									{#if appliance.enabled && appliance.usageOptions}
+										{@const selectedValue =
+											appliance.selectedUsage ?? appliance.usageOptions.defaultValue}
+										<div class="border-t border-emerald-200 px-3 pb-3 pt-2">
+											<p class="mb-2 text-xs font-medium text-slate-700">
+												{appliance.usageOptions.question}
+											</p>
+											<div class="flex flex-wrap gap-1.5">
+												{#each appliance.usageOptions.presets as preset (preset.value)}
+													<button
+														type="button"
+														onclick={() => selectUsage(appliance.id, preset.value)}
+														class="flex flex-col items-center rounded-lg px-3 py-2 text-xs font-medium transition-colors duration-150
+														{selectedValue === preset.value
+															? 'bg-emerald-600 text-white'
+															: 'bg-white text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'}"
+														aria-pressed={selectedValue === preset.value}
+													>
+														<span>{preset.label}</span>
+														<span
+															class="mt-0.5 text-[10px] {selectedValue === preset.value
+																? 'text-emerald-200'
+																: 'text-slate-400'}"
+														>
+															{formatKwh(preset.kwhPerYear)}
+														</span>
 													</button>
 												{/each}
 											</div>

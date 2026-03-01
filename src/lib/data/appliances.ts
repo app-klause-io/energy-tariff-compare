@@ -18,6 +18,20 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 				{ label: 'Ground source', value: 'ground-source' },
 			],
 		},
+		usageOptions: {
+			question: 'How many months is it active?',
+			presets: [
+				{ label: 'Winter only (5 months)', value: 'light', multiplier: 0.6, kwhPerYear: 4800 },
+				{ label: 'Extended (8 months)', value: 'medium', multiplier: 1.0, kwhPerYear: 8000 },
+				{
+					label: 'Year-round (12 months)',
+					value: 'heavy',
+					multiplier: 1.5,
+					kwhPerYear: 12000,
+				},
+			],
+			defaultValue: 'medium',
+		},
 	},
 	{
 		id: 'immersion-heater',
@@ -34,6 +48,15 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 				{ label: 'Mostly evenings', value: 'evening' },
 				{ label: 'Overnight (off-peak)', value: 'overnight' },
 			],
+		},
+		usageOptions: {
+			question: 'Hours per day',
+			presets: [
+				{ label: 'Timer (2 hrs)', value: 'light', multiplier: 0.67, kwhPerYear: 2000 },
+				{ label: 'Standard (3 hrs)', value: 'medium', multiplier: 1.0, kwhPerYear: 3000 },
+				{ label: 'Heavy (5 hrs)', value: 'heavy', multiplier: 1.67, kwhPerYear: 5000 },
+			],
+			defaultValue: 'medium',
 		},
 	},
 	{
@@ -69,6 +92,25 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 				{ label: 'Whole house', value: 'whole-house' },
 			],
 		},
+		usageOptions: {
+			question: 'How many months is it active?',
+			presets: [
+				{
+					label: 'Winter only (5 months)',
+					value: 'light',
+					multiplier: 0.6,
+					kwhPerYear: 1500,
+				},
+				{ label: 'Extended (8 months)', value: 'medium', multiplier: 1.0, kwhPerYear: 2500 },
+				{
+					label: 'Year-round (12 months)',
+					value: 'heavy',
+					multiplier: 1.5,
+					kwhPerYear: 3750,
+				},
+			],
+			defaultValue: 'medium',
+		},
 	},
 
 	// ── Transport ────────────────────────────────────────────────
@@ -88,6 +130,15 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 				{ label: 'No, during the day', value: 'daytime' },
 			],
 		},
+		usageOptions: {
+			question: 'How many miles do you drive per week?',
+			presets: [
+				{ label: 'Light (50 mi)', value: 'light', multiplier: 0.5, kwhPerYear: 1750 },
+				{ label: 'Medium (100 mi)', value: 'medium', multiplier: 1.0, kwhPerYear: 3500 },
+				{ label: 'Heavy (200 mi)', value: 'heavy', multiplier: 2.0, kwhPerYear: 7000 },
+			],
+			defaultValue: 'medium',
+		},
 	},
 
 	// ── Generation ───────────────────────────────────────────────
@@ -106,6 +157,15 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 				{ label: 'Yes', value: 'yes' },
 				{ label: 'No', value: 'no' },
 			],
+		},
+		usageOptions: {
+			question: 'System size',
+			presets: [
+				{ label: 'Small (2 kW)', value: 'light', multiplier: 0.5, kwhPerYear: -1500 },
+				{ label: 'Medium (4 kW)', value: 'medium', multiplier: 1.0, kwhPerYear: -3000 },
+				{ label: 'Large (6 kW)', value: 'heavy', multiplier: 1.5, kwhPerYear: -4500 },
+			],
+			defaultValue: 'medium',
 		},
 	},
 
@@ -135,6 +195,15 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 		enabled: false,
 		annualKwhEstimate: 800,
 		description: '~2kW, typical 5 meals per week',
+		usageOptions: {
+			question: 'Meals cooked per week',
+			presets: [
+				{ label: 'Light (3 meals)', value: 'light', multiplier: 0.6, kwhPerYear: 480 },
+				{ label: 'Medium (5 meals)', value: 'medium', multiplier: 1.0, kwhPerYear: 800 },
+				{ label: 'Heavy (7+ meals)', value: 'heavy', multiplier: 1.4, kwhPerYear: 1120 },
+			],
+			defaultValue: 'medium',
+		},
 	},
 	{
 		id: 'tumble-dryer',
@@ -152,6 +221,15 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 				{ label: 'During the day', value: 'daytime' },
 			],
 		},
+		usageOptions: {
+			question: 'Loads per week',
+			presets: [
+				{ label: 'Light (2 loads)', value: 'light', multiplier: 0.5, kwhPerYear: 300 },
+				{ label: 'Medium (4 loads)', value: 'medium', multiplier: 1.0, kwhPerYear: 600 },
+				{ label: 'Heavy (7 loads)', value: 'heavy', multiplier: 1.75, kwhPerYear: 1050 },
+			],
+			defaultValue: 'medium',
+		},
 	},
 
 	// ── Bathroom ─────────────────────────────────────────────────
@@ -163,6 +241,15 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 		enabled: false,
 		annualKwhEstimate: 1500,
 		description: '~8.5kW, short bursts morning & evening',
+		usageOptions: {
+			question: 'Showers per day (household)',
+			presets: [
+				{ label: '1–2 showers', value: 'light', multiplier: 0.5, kwhPerYear: 750 },
+				{ label: '3–4 showers', value: 'medium', multiplier: 1.0, kwhPerYear: 1500 },
+				{ label: '5+ showers', value: 'heavy', multiplier: 1.7, kwhPerYear: 2550 },
+			],
+			defaultValue: 'medium',
+		},
 	},
 
 	// ── Other ────────────────────────────────────────────────────
@@ -182,6 +269,20 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 				{ label: 'Occasional (weekends)', value: 'occasional' },
 			],
 		},
+		usageOptions: {
+			question: 'How often do you use it?',
+			presets: [
+				{ label: 'Weekends only', value: 'light', multiplier: 0.5, kwhPerYear: 1500 },
+				{
+					label: 'Few times a week',
+					value: 'medium',
+					multiplier: 1.0,
+					kwhPerYear: 3000,
+				},
+				{ label: 'Daily', value: 'heavy', multiplier: 1.5, kwhPerYear: 4500 },
+			],
+			defaultValue: 'medium',
+		},
 	},
 	{
 		id: 'air-conditioning',
@@ -191,5 +292,14 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 		enabled: false,
 		annualKwhEstimate: 600,
 		description: '~1.5kW, daytime summer use',
+		usageOptions: {
+			question: 'Summer months of use',
+			presets: [
+				{ label: '2 months', value: 'light', multiplier: 0.67, kwhPerYear: 400 },
+				{ label: '3 months', value: 'medium', multiplier: 1.0, kwhPerYear: 600 },
+				{ label: '4 months', value: 'heavy', multiplier: 1.33, kwhPerYear: 800 },
+			],
+			defaultValue: 'medium',
+		},
 	},
 ];

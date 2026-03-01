@@ -323,15 +323,29 @@ function normalise(profile: number[]): number[] {
 }
 
 /**
- * Get the effective kWh for an appliance, accounting for sub-options.
+ * Get the usage multiplier for an appliance based on its selected usage preset.
+ * Returns 1.0 if no usage options or no selection (defaults to medium).
+ */
+function getUsageMultiplier(appliance: Appliance): number {
+	if (!appliance.usageOptions) return 1.0;
+	const selected = appliance.selectedUsage ?? appliance.usageOptions.defaultValue;
+	const preset = appliance.usageOptions.presets.find((p) => p.value === selected);
+	return preset?.multiplier ?? 1.0;
+}
+
+/**
+ * Get the effective kWh for an appliance, accounting for sub-options and usage level.
  */
 function getApplianceKwh(appliance: Appliance): number {
+	let baseKwh = appliance.annualKwhEstimate;
+
 	const subOptionMap = APPLIANCE_SUB_OPTION_KWH[appliance.id];
 	if (subOptionMap && appliance.selectedSubOption) {
 		const override = subOptionMap[appliance.selectedSubOption];
-		if (override !== undefined) return override;
+		if (override !== undefined) baseKwh = override;
 	}
-	return appliance.annualKwhEstimate;
+
+	return baseKwh * getUsageMultiplier(appliance);
 }
 
 /**
@@ -382,9 +396,7 @@ export function calculateConsumption(
 	// Seasonal factors
 	const hasHeatPump = appliances.some((a) => a.id === 'heat-pump' && a.enabled);
 	const hasSolar = appliances.some((a) => a.id === 'solar' && a.enabled);
-	const hasUnderfloorHeating = appliances.some(
-		(a) => a.id === 'underfloor-heating' && a.enabled,
-	);
+	const hasUnderfloorHeating = appliances.some((a) => a.id === 'underfloor-heating' && a.enabled);
 	const hasAC = appliances.some((a) => a.id === 'air-conditioning' && a.enabled);
 
 	let winterFactor = 1.4;
