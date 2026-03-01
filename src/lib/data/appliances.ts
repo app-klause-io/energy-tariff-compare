@@ -76,4 +76,19 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 			],
 		},
 	},
+	{
+		id: 'immersion-heater',
+		name: 'Electric Immersion Heater',
+		icon: '\u{1F6BF}',
+		enabled: false,
+		annualKwhEstimate: 3000,
+		subOptions: {
+			label: 'When do you heat water?',
+			value: 'evening',
+			options: [
+				{ label: 'Mostly evenings', value: 'evening' },
+				{ label: 'Overnight (off-peak)', value: 'overnight' },
+			],
+		},
+	},
 ];

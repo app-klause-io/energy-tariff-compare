@@ -29,6 +29,7 @@ const APPLIANCE_SUB_OPTION_KWH: Record<string, Record<string, number>> = {
 	aga: { traditional: 4000, modern: 2500 },
 	solar: { no: -3000, yes: -3500 },
 	'electric-heating': { storage: 5000, radiators: 6000 },
+	'immersion-heater': { evening: 3000, overnight: 2700 },
 };
 
 export interface ConsumptionProfile {
@@ -161,6 +162,25 @@ function overlayApplianceProfiles(
 					}
 				}
 				// Radiators follow the general profile, no special overlay
+				break;
+			}
+
+			case 'immersion-heater': {
+				const subOption = appliance.selectedSubOption ?? 'evening';
+				if (subOption === 'overnight') {
+					// Concentrated overnight (slots 0-10, midnight-5am)
+					for (let i = 0; i < 10; i++) {
+						result[i] += weight * (1 / 10);
+					}
+				} else {
+					// Evening heating (slots 34-42, 5pm-9pm) with some morning (slots 12-16, 6am-8am)
+					for (let i = 34; i < 42; i++) {
+						result[i] += weight * 0.7 * (1 / 8);
+					}
+					for (let i = 12; i < 16; i++) {
+						result[i] += weight * 0.3 * (1 / 4);
+					}
+				}
 				break;
 			}
 
