@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import { getGspGroupId } from '$lib/data/regions';
 import { logger } from '$lib/server/logger';
-import type { OctopusProduct, OctopusRate, TariffInfo, TariffType } from '$lib/types/tariff';
+import type {
+	OctopusProduct,
+	OctopusRate,
+	Tariff,
+	TariffInfo,
+	TariffType,
+	TimeOfUseRate,
+} from '$lib/types/tariff';
 import type { UkRegion } from '$lib/types/wizard';
 
 const OctopusProductSchema = z.object({
@@ -129,7 +136,7 @@ export async function fetchStandingCharges(
 	return latest.value_inc_vat;
 }
 
-function classifyProduct(
+export function classifyProduct(
 	product: OctopusProduct,
 ): { type: TariffType; offPeakHours?: string } | null {
 	for (const target of TARGET_PRODUCTS) {
@@ -140,7 +147,7 @@ function classifyProduct(
 	return null;
 }
 
-function buildTariffCode(productCode: string, gspGroupId: string): string {
+export function buildTariffCode(productCode: string, gspGroupId: string): string {
 	return `E-1R-${productCode}-${gspGroupId}`;
 }
 
@@ -221,4 +228,116 @@ export async function fetchTariffsForRegion(region: UkRegion): Promise<TariffInf
 	}
 
 	return tariffs;
+}
+
+// --- TariffInfo → Tariff conversion ---
+
+function labelForSlot(slot: number): string {
+	if (slot < 14) return 'overnight';
+	if (slot < 32) return 'daytime';
+	if (slot < 38) return 'peak';
+	return 'evening';
+}
+
+function ratesToTimeOfUse(rates: OctopusRate[], tariffType: TariffType): TimeOfUseRate[] {
+	if (rates.length === 0) return [];
+
+	// Standard/flat: single rate covering all 48 slots
+	if (tariffType === 'standard' || tariffType === 'flat') {
+		const avgRate = rates.reduce((sum, r) => sum + r.value_inc_vat, 0) / rates.length;
+		return [{ startSlot: 0, endSlot: 48, unitRate: avgRate }];
+	}
+
+	// Agile: map half-hourly rates to slots (API returns descending, reverse to chronological)
+	if (tariffType === 'agile') {
+		const recent = rates.slice(0, 48).reverse();
+		if (recent.length === 0) return [];
+
+		const result: TimeOfUseRate[] = [];
+		let currentRate = recent[0].value_inc_vat;
+		let startSlot = 0;
+
+		for (let i = 1; i < recent.length; i++) {
+			if (Math.abs(recent[i].value_inc_vat - currentRate) > 0.01) {
+				result.push({
+					startSlot,
+					endSlot: i,
+					unitRate: currentRate,
+					label: labelForSlot(startSlot),
+				});
+				currentRate = recent[i].value_inc_vat;
+				startSlot = i;
+			}
+		}
+		result.push({
+			startSlot,
+			endSlot: recent.length < 48 ? 48 : recent.length,
+			unitRate: currentRate,
+			label: labelForSlot(startSlot),
+		});
+
+		return result;
+	}
+
+	// Go / Intelligent Go / Cosy: detect off-peak vs standard from rate values
+	const uniqueRates = [...new Set(rates.map((r) => r.value_inc_vat))].sort((a, b) => a - b);
+	const offPeakValue = uniqueRates[0];
+
+	const sortedRates = [...rates].sort(
+		(a, b) => new Date(a.valid_from).getTime() - new Date(b.valid_from).getTime(),
+	);
+
+	const slotRates = new Array<number>(48).fill(0);
+	for (let i = 0; i < Math.min(sortedRates.length, 48); i++) {
+		slotRates[i] = sortedRates[i].value_inc_vat;
+	}
+	if (sortedRates.length < 48 && sortedRates.length > 0) {
+		const lastVal = sortedRates[sortedRates.length - 1].value_inc_vat;
+		for (let i = sortedRates.length; i < 48; i++) {
+			slotRates[i] = lastVal;
+		}
+	}
+
+	const result: TimeOfUseRate[] = [];
+	let currentRate = slotRates[0];
+	let startSlot = 0;
+
+	for (let i = 1; i < 48; i++) {
+		if (Math.abs(slotRates[i] - currentRate) > 0.01) {
+			result.push({
+				startSlot,
+				endSlot: i,
+				unitRate: currentRate,
+				label: Math.abs(currentRate - offPeakValue) < 0.01 ? 'off-peak' : 'standard',
+			});
+			currentRate = slotRates[i];
+			startSlot = i;
+		}
+	}
+	result.push({
+		startSlot,
+		endSlot: 48,
+		unitRate: currentRate,
+		label: Math.abs(currentRate - offPeakValue) < 0.01 ? 'off-peak' : 'standard',
+	});
+
+	return result;
+}
+
+/**
+ * Convert a TariffInfo (from API) to the Tariff format used by the comparison engine.
+ */
+export function convertTariffInfoToTariff(info: TariffInfo, region: UkRegion): Tariff {
+	const rates = ratesToTimeOfUse(info.unitRates, info.type);
+
+	return {
+		id: `octopus-${info.productCode.toLowerCase()}`,
+		name: info.name,
+		supplier: 'Octopus Energy',
+		type: info.type,
+		standingCharge: info.standingChargePence,
+		rates,
+		region,
+		description: info.description,
+	};
 }

@@ -108,16 +108,25 @@ export function calculateTariffCostBreakdown(
 
 /**
  * Compare a consumption profile across all available tariffs for a region.
+ * Uses hardcoded fallback data. For live API data, use compareTariffsWithData.
  * Returns results sorted by annual cost (cheapest first).
- *
- * @param profile - Consumption profile from calculateConsumption
- * @param region - UK region to get tariffs for
- * @returns Array of comparison results, sorted cheapest to most expensive
  */
 export function compareTariffs(profile: ConsumptionProfile, region: UkRegion): ComparisonResult[] {
 	const tariffs = getTariffsForRegion(region);
+	return compareTariffsWithData(profile, tariffs);
+}
 
-	// Calculate cost for each tariff
+/**
+ * Compare a consumption profile against a provided set of tariffs.
+ * Use this with live API data or any pre-fetched tariff set.
+ * Returns results sorted by annual cost (cheapest first).
+ */
+export function compareTariffsWithData(
+	profile: ConsumptionProfile,
+	tariffs: Tariff[],
+): ComparisonResult[] {
+	if (tariffs.length === 0) return [];
+
 	const results: ComparisonResult[] = tariffs.map((tariff) => {
 		const annualCost = calculateTariffCost(profile, tariff);
 		const breakdown = calculateTariffCostBreakdown(profile, tariff);
@@ -125,15 +134,13 @@ export function compareTariffs(profile: ConsumptionProfile, region: UkRegion): C
 		return {
 			tariff,
 			annualCost,
-			savingsVsWorst: 0, // Will be calculated after sorting
+			savingsVsWorst: 0,
 			breakdown,
 		};
 	});
 
-	// Sort by cost (cheapest first)
 	results.sort((a, b) => a.annualCost - b.annualCost);
 
-	// Calculate savings vs the most expensive option
 	const worstCost = results[results.length - 1].annualCost;
 	for (const result of results) {
 		result.savingsVsWorst = worstCost - result.annualCost;
