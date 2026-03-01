@@ -11,6 +11,10 @@
 		{
 			"path": "/api/tariffs/ingest/elexon",
 			"schedule": "0 */6 * * *"
+		},
+		{
+			"path": "/api/tariffs/ingest/energyshop",
+			"schedule": "0 7 * * 1"
 		}
 	]
 }
