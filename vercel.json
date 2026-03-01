@@ -1,0 +1,16 @@
+{
+	"crons": [
+		{
+			"path": "/api/tariffs/ingest/octopus",
+			"schedule": "0 6 * * *"
+		},
+		{
+			"path": "/api/tariffs/ingest/ofgem",
+			"schedule": "0 6 1 * *"
+		},
+		{
+			"path": "/api/tariffs/ingest/elexon",
+			"schedule": "0 */6 * * *"
+		}
+	]
+}
