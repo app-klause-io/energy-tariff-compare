@@ -11,7 +11,6 @@
 	let { results, annualKwh, onReset }: Props = $props();
 
 	let bestResult = $derived(results[0]);
-	let worstResult = $derived(results[results.length - 1]);
 
 	function formatCurrency(amount: number): string {
 		return `£${Math.round(amount).toLocaleString()}`;
@@ -123,7 +122,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
 						Usage breakdown
 					</p>
-					{#each bestResult.breakdown.byTimePeriod as period}
+					{#each bestResult.breakdown.byTimePeriod as period (period.label)}
 						<div class="flex items-center justify-between rounded bg-white px-3 py-2 text-sm">
 							<span class="capitalize text-slate-700">{period.label}</span>
 							<div class="text-right">
@@ -142,10 +141,11 @@
 		<h3 class="text-lg font-semibold text-slate-900">All Tariffs Compared</h3>
 		<p class="mt-1 text-sm text-slate-500">Ranked from cheapest to most expensive</p>
 
-		<div class="mt-4 space-y-3">
-			{#each results as result, index}
+		<div class="mt-4 space-y-3" role="list" aria-label="All tariffs ranked by cost">
+			{#each results as result, index (result.tariff.name)}
 				<div
 					class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+					role="listitem"
 				>
 					<div class="p-4">
 						<div class="flex items-start justify-between">
@@ -154,6 +154,7 @@
 									class="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full {getRankBadgeClass(
 										index,
 									)}"
+									aria-hidden="true"
 								>
 									<span class="text-sm font-bold">#{index + 1}</span>
 								</div>
@@ -194,6 +195,7 @@
 				viewBox="0 0 24 24"
 				stroke="currentColor"
 				stroke-width="2"
+				aria-hidden="true"
 			>
 				<path
 					stroke-linecap="round"

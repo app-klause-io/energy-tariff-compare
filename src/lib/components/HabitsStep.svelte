@@ -8,10 +8,10 @@
 	let { habits = $bindable() }: Props = $props();
 
 	const patterns: { value: UsagePattern; label: string; time: string; icon: string }[] = [
-		{ value: 'morning', label: 'Morning', time: '7\u201310am', icon: '\u{1F305}' },
-		{ value: 'daytime', label: 'Daytime / WFH', time: '10am\u20134pm', icon: '\u{2600}\u{FE0F}' },
-		{ value: 'evening', label: 'Evening', time: '4\u20139pm', icon: '\u{1F307}' },
-		{ value: 'night', label: 'Night owl', time: 'Overnight', icon: '\u{1F319}' },
+		{ value: 'morning', label: 'Morning', time: '7–10am', icon: '🌅' },
+		{ value: 'daytime', label: 'Daytime / WFH', time: '10am–4pm', icon: '☀️' },
+		{ value: 'evening', label: 'Evening', time: '4–9pm', icon: '🌇' },
+		{ value: 'night', label: 'Night owl', time: 'Overnight', icon: '🌙' },
 	];
 
 	const flexibilityOptions: { value: FlexibilityLevel; label: string; desc: string }[] = [
@@ -31,11 +31,17 @@
 
 <div class="space-y-8">
 	<div>
-		<h2 class="text-lg font-semibold text-slate-900">When do you use the most energy?</h2>
+		<h2 class="text-lg font-semibold text-slate-900" id="usage-pattern-label">
+			When do you use the most energy?
+		</h2>
 		<p class="mt-1 text-sm text-slate-500">
 			This helps us match you with time-of-use tariffs that could save you money.
 		</p>
-		<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+		<div
+			class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"
+			role="group"
+			aria-labelledby="usage-pattern-label"
+		>
 			{#each patterns as p (p.value)}
 				<button
 					type="button"
@@ -55,11 +61,13 @@
 	</div>
 
 	<div>
-		<h2 class="text-lg font-semibold text-slate-900">Run appliances overnight?</h2>
+		<h2 class="text-lg font-semibold text-slate-900" id="overnight-label">
+			Run appliances overnight?
+		</h2>
 		<p class="mt-1 text-sm text-slate-500">
 			Washing machine, dishwasher, etc. on timers overnight.
 		</p>
-		<div class="mt-3 flex gap-3">
+		<div class="mt-3 flex gap-3" role="group" aria-labelledby="overnight-label">
 			<button
 				type="button"
 				onclick={() => {
@@ -90,11 +98,17 @@
 	</div>
 
 	<div>
-		<h2 class="text-lg font-semibold text-slate-900">How flexible is your energy usage?</h2>
+		<h2 class="text-lg font-semibold text-slate-900" id="flexibility-label">
+			How flexible is your energy usage?
+		</h2>
 		<p class="mt-1 text-sm text-slate-500">
 			Higher flexibility means more savings with time-of-use tariffs.
 		</p>
-		<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:gap-3">
+		<div
+			class="mt-3 flex flex-col gap-2 sm:flex-row sm:gap-3"
+			role="group"
+			aria-labelledby="flexibility-label"
+		>
 			{#each flexibilityOptions as opt (opt.value)}
 				<button
 					type="button"

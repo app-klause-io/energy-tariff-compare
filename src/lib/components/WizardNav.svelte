@@ -14,7 +14,11 @@
 	let isLastStep = $derived(currentStep === 3);
 </script>
 
-<div class="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
+<div
+	class="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-4 sm:px-6"
+	role="navigation"
+	aria-label="Wizard navigation"
+>
 	{#if currentStep > 1}
 		<Button variant="outline" onclick={onBack}>
 			<svg
@@ -23,6 +27,7 @@
 				viewBox="0 0 24 24"
 				stroke="currentColor"
 				stroke-width="2"
+				aria-hidden="true"
 			>
 				<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
 			</svg>
@@ -41,6 +46,7 @@
 				viewBox="0 0 24 24"
 				stroke="currentColor"
 				stroke-width="2"
+				aria-hidden="true"
 			>
 				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 			</svg>
@@ -54,6 +60,7 @@
 				viewBox="0 0 24 24"
 				stroke="currentColor"
 				stroke-width="2"
+				aria-hidden="true"
 			>
 				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 			</svg>
