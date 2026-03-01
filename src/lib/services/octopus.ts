@@ -148,7 +148,8 @@ export function classifyProduct(
 }
 
 export function buildTariffCode(productCode: string, gspGroupId: string): string {
-	return `E-1R-${productCode}-${gspGroupId}`;
+	const regionLetter = gspGroupId.replace(/^_/, '');
+	return `E-1R-${productCode}-${regionLetter}`;
 }
 
 function extractMultiRateInfo(
