@@ -34,16 +34,11 @@ export function calculateTariffCost(profile: ConsumptionProfile, tariff: Tariff)
 		dailyEnergyCost += (kwhInSlot * rateInPence) / 100; // pence to pounds
 	}
 
-	// Apply seasonal variation to get annual energy cost
-	const { winter, spring, summer, autumn } = profile.seasonalFactors;
-	const daysPerSeason = 365 / 4;
-
-	const winterCost = dailyEnergyCost * winter * daysPerSeason;
-	const springCost = dailyEnergyCost * spring * daysPerSeason;
-	const summerCost = dailyEnergyCost * summer * daysPerSeason;
-	const autumnCost = dailyEnergyCost * autumn * daysPerSeason;
-
-	const annualEnergyCost = winterCost + springCost + summerCost + autumnCost;
+	// Scale to annual cost
+	// Note: profile.annualKwh already includes seasonal variation in aggregate,
+	// and dailyProfile represents the average daily distribution across the year.
+	// Seasonal factors are informational only - don't reapply them here.
+	const annualEnergyCost = dailyEnergyCost * 365;
 
 	return standingChargeCost + annualEnergyCost;
 }
@@ -90,12 +85,10 @@ export function calculateTariffCostBreakdown(
 		}
 	}
 
-	// Apply seasonal scaling to get annual usage
-	const { winter, spring, summer, autumn } = profile.seasonalFactors;
-	const avgSeasonalFactor = (winter + spring + summer + autumn) / 4;
-
+	// Scale to annual usage and calculate costs
+	// Note: profile.annualKwh already includes seasonal variation, don't reapply
 	const byTimePeriod = Array.from(usageByPeriod.values()).map((period) => {
-		const annualKwh = period.kwhUsed * 365 * avgSeasonalFactor;
+		const annualKwh = period.kwhUsed * 365;
 		const cost = (annualKwh * period.unitRate) / 100; // pence to pounds
 		return {
 			label: period.label,

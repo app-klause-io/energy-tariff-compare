@@ -13,7 +13,7 @@ import type { UkRegion } from '$lib/types/wizard';
  * - Slot 0 = 00:00-00:30
  * - Slot 1 = 00:30-01:00
  * - ...
- * - Slot 47 = 23:30-00:00
+ * - Slot 47 = 23:30-24:00
  */
 
 /** Helper to create flat-rate tariff covering all 48 slots */
@@ -64,9 +64,9 @@ export function getTariffsForRegion(region: UkRegion): Tariff[] {
 			type: 'economy7',
 			standingCharge: 65.5,
 			rates: [
-				// Off-peak: 00:30-07:30 (slots 1-15)
+				// Off-peak: 00:30-07:30 (slots 1-14 = 7 hours)
 				{ startSlot: 1, endSlot: 15, unitRate: 18.5 + regionalAdjustment, label: 'off-peak' },
-				// Peak: 07:30-00:30 (slots 15-48 + 0-1)
+				// Day rate: 07:30-00:30 (slots 15-48 + 0-1)
 				{ startSlot: 0, endSlot: 1, unitRate: 28.2 + regionalAdjustment, label: 'day' },
 				{ startSlot: 15, endSlot: 48, unitRate: 28.2 + regionalAdjustment, label: 'day' },
 			],
