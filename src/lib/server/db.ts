@@ -245,11 +245,11 @@ export async function getTariffs(
 	const fuel_type = options.fuel_type ?? null;
 
 	// Use tagged template syntax with nullable filter pattern.
-	// When a region is specified, also include tariffs with NULL region (national averages).
+	// When a region is specified, also include 'national' tariffs (EnergyShop national averages).
 	const countResult = await sql`
 		SELECT COUNT(*) as count FROM tariffs
 		WHERE (${provider}::text IS NULL OR provider = ${provider})
-		AND (${region}::text IS NULL OR region = ${region} OR region IS NULL)
+		AND (${region}::text IS NULL OR region = ${region} OR region = 'national')
 		AND (${fuel_type}::text IS NULL OR fuel_type = ${fuel_type})
 	`;
 	const total = Number(countResult[0]?.count ?? 0);
@@ -261,7 +261,7 @@ export async function getTariffs(
 		       valid_from, valid_to, source, fetched_at, created_at
 		FROM tariffs
 		WHERE (${provider}::text IS NULL OR provider = ${provider})
-		AND (${region}::text IS NULL OR region = ${region} OR region IS NULL)
+		AND (${region}::text IS NULL OR region = ${region} OR region = 'national')
 		AND (${fuel_type}::text IS NULL OR fuel_type = ${fuel_type})
 		ORDER BY provider, region, tariff_name
 		LIMIT ${limit} OFFSET ${offset}

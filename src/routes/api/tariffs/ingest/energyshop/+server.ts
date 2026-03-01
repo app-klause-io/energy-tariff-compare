@@ -115,13 +115,14 @@ function parseSupplierTable(html: string, tableIndex: number): ParsedTariff[] {
 }
 
 /**
- * Classify a tariff name to determine if it's fixed, variable, or tracker.
+ * Classify a tariff name and map to a valid TariffType.
+ * TariffType union: 'flat' | 'economy7' | 'agile' | 'go' | 'intelligent-go' | 'cosy' | 'flux' | 'standard'
  */
-function classifyTariff(name: string): 'fixed' | 'variable' | 'tracker' {
+function classifyTariffType(name: string): { type: 'flat' | 'standard'; tariffClass: string } {
 	const lower = name.toLowerCase();
-	if (lower.includes('fix') || lower.includes('lock')) return 'fixed';
-	if (lower.includes('tracker') || lower.includes('track')) return 'tracker';
-	return 'variable';
+	if (lower.includes('fix') || lower.includes('lock')) return { type: 'flat', tariffClass: 'fixed' };
+	if (lower.includes('tracker') || lower.includes('track')) return { type: 'flat', tariffClass: 'tracker' };
+	return { type: 'standard', tariffClass: 'variable' };
 }
 
 /**
@@ -178,22 +179,23 @@ export const POST: RequestHandler = async ({ request }) => {
 				const rows: TariffRow[] = [];
 
 				for (const tariff of parsed) {
-					const tariffClass = classifyTariff(tariff.tariffName);
+					const { type, tariffClass } = classifyTariffType(tariff.tariffName);
 					const tariffCode = makeTariffCode(supplier.provider, tariff.tariffName);
 
-					// Electricity tariff — stored without region (national average)
+					// Electricity tariff — stored with 'national' region sentinel
+					// (NULL would break the UNIQUE constraint on re-ingest)
 					rows.push({
 						provider: supplier.provider,
 						tariff_code: tariffCode + '-ELEC',
 						tariff_name: tariff.tariffName,
-						region: null as unknown as undefined,
+						region: 'national',
 						fuel_type: 'electricity',
 						payment_method: 'direct_debit',
 						unit_rate_p: tariff.elecUnitRate,
 						standing_charge_p:
 							tariff.elecStandingCharge > 0 ? tariff.elecStandingCharge : undefined,
 						rate_data: {
-							type: tariffClass === 'variable' ? 'flat' : tariffClass,
+							type,
 							source_provider_name: supplier.providerName,
 							tariff_class: tariffClass,
 							gas_unit_rate_p: tariff.gasUnitRate > 0 ? tariff.gasUnitRate : undefined,
@@ -209,14 +211,14 @@ export const POST: RequestHandler = async ({ request }) => {
 							provider: supplier.provider,
 							tariff_code: tariffCode + '-GAS',
 							tariff_name: tariff.tariffName,
-							region: null as unknown as undefined,
+							region: 'national',
 							fuel_type: 'gas',
 							payment_method: 'direct_debit',
 							unit_rate_p: tariff.gasUnitRate,
 							standing_charge_p:
 								tariff.gasStandingCharge > 0 ? tariff.gasStandingCharge : undefined,
 							rate_data: {
-								type: tariffClass === 'variable' ? 'flat' : tariffClass,
+								type,
 								source_provider_name: supplier.providerName,
 								tariff_class: tariffClass,
 							},

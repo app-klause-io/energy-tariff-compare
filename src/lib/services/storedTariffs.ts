@@ -117,9 +117,9 @@ export function convertStoredToTariffs(
 		return [];
 	}
 
-	// For EnergyShop records (null region / national averages), use the regional
-	// cap standing charge as the standing charge estimate, since the EnergyShop
-	// pages show 0.00p for standing charges.
+	// For EnergyShop records (region='national'), use the regional cap standing
+	// charge as the standing charge estimate, since the EnergyShop pages show
+	// 0.00p for standing charges.
 	const effectiveStandingCharge =
 		standingCharge > 0 ? standingCharge : (capStandingCharge ?? 0);
 
