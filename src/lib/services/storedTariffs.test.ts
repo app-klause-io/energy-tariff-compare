@@ -89,7 +89,7 @@ describe('convertStoredToTariffs', () => {
 		const suppliers = tariffs.map((t) => t.supplier);
 		expect(suppliers).toContain('British Gas');
 		expect(suppliers).toContain('EDF');
-		expect(suppliers).toContain('E.ON');
+		expect(suppliers).toContain('E.ON Next');
 		expect(suppliers).toContain('Scottish Power');
 		expect(suppliers).toContain('OVO Energy');
 

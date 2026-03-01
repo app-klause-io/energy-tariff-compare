@@ -9,53 +9,127 @@ import { logger } from '$lib/server/logger';
 let tableReady = false;
 
 /**
- * Ofgem Q1 2026 price cap rates (January–March 2026).
- * These are the default/cap rates that most big-six suppliers charge.
- * Rates vary slightly by region and payment method.
+ * Ofgem price cap rates by region, extracted from:
+ * https://www.ofgem.gov.uk/information-consumers/energy-advice-households/get-energy-price-cap-standing-charges-and-unit-rates-region
  *
- * Source: https://www.ofgem.gov.uk/check-if-energy-price-cap-affects-you
+ * Data covers Q1 2026 (Jan-Mar) and Q2 2026 (Apr-Jun).
+ * Values: sc = standing charge (pence/day), ur = unit rate (pence/kWh)
  *
- * Regional adjustments are small (±1-2p/kWh) — we use the national
- * typical values and apply a small regional offset.
+ * Map key = our app region value, data from Ofgem's regional tables.
  */
-const OFGEM_CAP_Q1_2026 = {
-	electricity: {
-		unit_rate_p: 24.5,
-		standing_charge_p: 61.64,
+
+interface RegionalRates {
+	elec_sc_q1: number;
+	elec_sc_q2: number;
+	elec_ur_q1: number;
+	elec_ur_q2: number;
+	gas_sc_q1: number;
+	gas_sc_q2: number;
+	gas_ur_q1: number;
+	gas_ur_q2: number;
+}
+
+// Direct Debit, single rate electricity + gas
+const OFGEM_REGIONAL_DD: Record<string, RegionalRates> = {
+	'north-west': {
+		elec_sc_q1: 52.22, elec_sc_q2: 47.63, elec_ur_q1: 28.45, elec_ur_q2: 24.70,
+		gas_sc_q1: 35.23, gas_sc_q2: 29.22, gas_ur_q1: 5.89, gas_ur_q2: 5.65,
 	},
-	gas: {
-		unit_rate_p: 6.76,
-		standing_charge_p: 32.76,
+	'north-east': {
+		elec_sc_q1: 60.93, elec_sc_q2: 64.30, elec_ur_q1: 26.75, elec_ur_q2: 23.81,
+		gas_sc_q1: 35.21, gas_sc_q2: 29.20, gas_ur_q1: 5.93, gas_ur_q2: 5.69,
 	},
-	valid_from: '2025-10-01T00:00:00Z',
-	valid_to: '2026-03-31T23:59:59Z',
-	quarter: 'Q1 2026',
+	yorkshire: {
+		elec_sc_q1: 59.72, elec_sc_q2: 64.40, elec_ur_q1: 26.69, elec_ur_q2: 23.85,
+		gas_sc_q1: 35.18, gas_sc_q2: 29.18, gas_ur_q1: 5.90, gas_ur_q2: 5.68,
+	},
+	'north-scotland': {
+		elec_sc_q1: 62.07, elec_sc_q2: 57.57, elec_ur_q1: 28.36, elec_ur_q2: 25.02,
+		gas_sc_q1: 35.28, gas_sc_q2: 29.27, gas_ur_q1: 5.89, gas_ur_q2: 5.64,
+	},
+	southern: {
+		elec_sc_q1: 45.70, elec_sc_q2: 49.70, elec_ur_q1: 27.83, elec_ur_q2: 24.98,
+		gas_sc_q1: 34.56, gas_sc_q2: 28.56, gas_ur_q1: 6.00, gas_ur_q2: 5.94,
+	},
+	'south-scotland': {
+		elec_sc_q1: 57.62, elec_sc_q2: 64.20, elec_ur_q1: 27.18, elec_ur_q2: 24.40,
+		gas_sc_q1: 35.30, gas_sc_q2: 29.30, gas_ur_q1: 5.89, gas_ur_q2: 5.64,
+	},
+	merseyside: {
+		elec_sc_q1: 71.01, elec_sc_q2: 70.78, elec_ur_q1: 29.09, elec_ur_q2: 26.19,
+		gas_sc_q1: 35.49, gas_sc_q2: 29.48, gas_ur_q1: 5.94, gas_ur_q2: 5.69,
+	},
+	london: {
+		elec_sc_q1: 47.11, elec_sc_q2: 44.83, elec_ur_q1: 27.00, elec_ur_q2: 24.90,
+		gas_sc_q1: 35.63, gas_sc_q2: 29.60, gas_ur_q1: 6.03, gas_ur_q2: 5.91,
+	},
+	'south-east': {
+		elec_sc_q1: 48.66, elec_sc_q2: 54.45, elec_ur_q1: 28.27, elec_ur_q2: 25.23,
+		gas_sc_q1: 34.68, gas_sc_q2: 28.67, gas_ur_q1: 5.83, gas_ur_q2: 5.80,
+	},
+	eastern: {
+		elec_sc_q1: 49.33, elec_sc_q2: 53.95, elec_ur_q1: 27.88, elec_ur_q2: 24.94,
+		gas_sc_q1: 34.74, gas_sc_q2: 28.74, gas_ur_q1: 5.87, gas_ur_q2: 5.67,
+	},
+	'east-midlands': {
+		elec_sc_q1: 50.17, elec_sc_q2: 53.61, elec_ur_q1: 26.89, elec_ur_q2: 23.67,
+		gas_sc_q1: 34.82, gas_sc_q2: 28.82, gas_ur_q1: 5.79, gas_ur_q2: 5.60,
+	},
+	'west-midlands': {
+		elec_sc_q1: 54.08, elec_sc_q2: 59.72, elec_ur_q1: 26.99, elec_ur_q2: 23.89,
+		gas_sc_q1: 35.12, gas_sc_q2: 29.11, gas_ur_q1: 5.85, gas_ur_q2: 5.69,
+	},
+	'south-west': {
+		elec_sc_q1: 55.11, elec_sc_q2: 57.90, elec_ur_q1: 28.16, elec_ur_q2: 24.97,
+		gas_sc_q1: 34.71, gas_sc_q2: 28.72, gas_ur_q1: 6.15, gas_ur_q2: 5.89,
+	},
+	'south-wales': {
+		elec_sc_q1: 52.75, elec_sc_q2: 57.86, elec_ur_q1: 28.18, elec_ur_q2: 24.90,
+		gas_sc_q1: 35.35, gas_sc_q2: 29.35, gas_ur_q1: 6.11, gas_ur_q2: 5.84,
+	},
 };
 
 /**
- * Regional offsets from national average (pence per kWh).
- * Based on Ofgem Annex 9 regional variations.
+ * Determine which quarter we're currently in and return the appropriate rates.
  */
-const REGIONAL_OFFSETS: Record<string, { elec_unit: number; elec_standing: number }> = {
-	eastern: { elec_unit: 0.2, elec_standing: 0.5 },
-	'east-midlands': { elec_unit: -0.1, elec_standing: -0.3 },
-	london: { elec_unit: 0.0, elec_standing: 0.0 },
-	merseyside: { elec_unit: 0.3, elec_standing: 0.8 },
-	'west-midlands': { elec_unit: 0.1, elec_standing: 0.2 },
-	'north-east': { elec_unit: -0.2, elec_standing: -0.5 },
-	'north-west': { elec_unit: 0.2, elec_standing: 0.4 },
-	southern: { elec_unit: 0.4, elec_standing: 1.0 },
-	'south-east': { elec_unit: 0.5, elec_standing: 1.2 },
-	'south-wales': { elec_unit: 0.1, elec_standing: 0.3 },
-	'south-west': { elec_unit: 0.6, elec_standing: 1.5 },
-	yorkshire: { elec_unit: -0.3, elec_standing: -0.4 },
-	'south-scotland': { elec_unit: -0.4, elec_standing: -0.8 },
-	'north-scotland': { elec_unit: 0.8, elec_standing: 2.0 },
-};
+function getCurrentQuarterRates(rates: RegionalRates): {
+	elec_sc: number;
+	elec_ur: number;
+	gas_sc: number;
+	gas_ur: number;
+	quarter: string;
+	valid_from: string;
+	valid_to: string;
+} {
+	const now = new Date();
+	const month = now.getMonth() + 1; // 1-12
 
-const PAYMENT_METHODS = ['direct_debit', 'prepayment'] as const;
+	if (month >= 4 && month <= 6) {
+		return {
+			elec_sc: rates.elec_sc_q2,
+			elec_ur: rates.elec_ur_q2,
+			gas_sc: rates.gas_sc_q2,
+			gas_ur: rates.gas_ur_q2,
+			quarter: 'Q2 2026',
+			valid_from: '2026-04-01T00:00:00Z',
+			valid_to: '2026-06-30T23:59:59Z',
+		};
+	}
 
-const PREPAYMENT_UPLIFT_P = 1.5; // Prepayment typically ~1.5p/kWh more
+	// Default to Q1 (or latest available data)
+	return {
+		elec_sc: rates.elec_sc_q1,
+		elec_ur: rates.elec_ur_q1,
+		gas_sc: rates.gas_sc_q1,
+		gas_ur: rates.gas_ur_q1,
+		quarter: 'Q1 2026',
+		valid_from: '2026-01-01T00:00:00Z',
+		valid_to: '2026-03-31T23:59:59Z',
+	};
+}
+
+// Vercel Cron sends GET requests — alias so both methods work.
+export { POST as GET };
 
 export const POST: RequestHandler = async ({ request }) => {
 	validateBearerToken(request);
@@ -72,55 +146,61 @@ export const POST: RequestHandler = async ({ request }) => {
 		const rows: TariffRow[] = [];
 
 		for (const regionEntry of UK_REGIONS) {
-			const offset = REGIONAL_OFFSETS[regionEntry.value] ?? { elec_unit: 0, elec_standing: 0 };
-
-			for (const paymentMethod of PAYMENT_METHODS) {
-				const prepayUplift = paymentMethod === 'prepayment' ? PREPAYMENT_UPLIFT_P : 0;
-
-				// Electricity price cap tariff
-				rows.push({
-					provider: 'ofgem_cap',
-					tariff_code: `OFGEM-CAP-ELEC-${regionEntry.gspGroupId}-${paymentMethod.toUpperCase()}`,
-					tariff_name: `Price Cap (${OFGEM_CAP_Q1_2026.quarter})`,
-					region: regionEntry.value,
-					fuel_type: 'electricity',
-					payment_method: paymentMethod,
-					unit_rate_p: OFGEM_CAP_Q1_2026.electricity.unit_rate_p + offset.elec_unit + prepayUplift,
-					standing_charge_p: OFGEM_CAP_Q1_2026.electricity.standing_charge_p + offset.elec_standing,
-					rate_data: {
-						quarter: OFGEM_CAP_Q1_2026.quarter,
-						type: 'flat',
-						national_unit_rate_p: OFGEM_CAP_Q1_2026.electricity.unit_rate_p,
-						national_standing_charge_p: OFGEM_CAP_Q1_2026.electricity.standing_charge_p,
-						regional_offset_unit: offset.elec_unit,
-						regional_offset_standing: offset.elec_standing,
-						payment_method: paymentMethod,
-					},
-					valid_from: OFGEM_CAP_Q1_2026.valid_from,
-					valid_to: OFGEM_CAP_Q1_2026.valid_to,
-					source: 'ofgem_annex9',
-				});
-
-				// Gas price cap tariff
-				rows.push({
-					provider: 'ofgem_cap',
-					tariff_code: `OFGEM-CAP-GAS-${regionEntry.gspGroupId}-${paymentMethod.toUpperCase()}`,
-					tariff_name: `Price Cap Gas (${OFGEM_CAP_Q1_2026.quarter})`,
-					region: regionEntry.value,
-					fuel_type: 'gas',
-					payment_method: paymentMethod,
-					unit_rate_p: OFGEM_CAP_Q1_2026.gas.unit_rate_p + prepayUplift,
-					standing_charge_p: OFGEM_CAP_Q1_2026.gas.standing_charge_p,
-					rate_data: {
-						quarter: OFGEM_CAP_Q1_2026.quarter,
-						type: 'flat',
-						payment_method: paymentMethod,
-					},
-					valid_from: OFGEM_CAP_Q1_2026.valid_from,
-					valid_to: OFGEM_CAP_Q1_2026.valid_to,
-					source: 'ofgem_annex9',
-				});
+			const regionalRates = OFGEM_REGIONAL_DD[regionEntry.value];
+			if (!regionalRates) {
+				logger.warn('ingest.ofgem.noRegionData', { region: regionEntry.value });
+				continue;
 			}
+
+			const current = getCurrentQuarterRates(regionalRates);
+
+			// Electricity price cap tariff (Direct Debit)
+			rows.push({
+				provider: 'ofgem_cap',
+				tariff_code: `OFGEM-CAP-ELEC-${regionEntry.gspGroupId}-DD`,
+				tariff_name: `Price Cap (${current.quarter})`,
+				region: regionEntry.value,
+				fuel_type: 'electricity',
+				payment_method: 'direct_debit',
+				unit_rate_p: current.elec_ur,
+				standing_charge_p: current.elec_sc,
+				rate_data: {
+					quarter: current.quarter,
+					type: 'flat',
+					payment_method: 'direct_debit',
+					q1_unit_rate: regionalRates.elec_ur_q1,
+					q1_standing_charge: regionalRates.elec_sc_q1,
+					q2_unit_rate: regionalRates.elec_ur_q2,
+					q2_standing_charge: regionalRates.elec_sc_q2,
+				},
+				valid_from: current.valid_from,
+				valid_to: current.valid_to,
+				source: 'ofgem_regional',
+			});
+
+			// Gas price cap tariff (Direct Debit)
+			rows.push({
+				provider: 'ofgem_cap',
+				tariff_code: `OFGEM-CAP-GAS-${regionEntry.gspGroupId}-DD`,
+				tariff_name: `Price Cap Gas (${current.quarter})`,
+				region: regionEntry.value,
+				fuel_type: 'gas',
+				payment_method: 'direct_debit',
+				unit_rate_p: current.gas_ur,
+				standing_charge_p: current.gas_sc,
+				rate_data: {
+					quarter: current.quarter,
+					type: 'flat',
+					payment_method: 'direct_debit',
+					q1_unit_rate: regionalRates.gas_ur_q1,
+					q1_standing_charge: regionalRates.gas_sc_q1,
+					q2_unit_rate: regionalRates.gas_ur_q2,
+					q2_standing_charge: regionalRates.gas_sc_q2,
+				},
+				valid_from: current.valid_from,
+				valid_to: current.valid_to,
+				source: 'ofgem_regional',
+			});
 		}
 
 		totalUpserted = await upsertTariffs(rows);
@@ -135,7 +215,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({
 			success: true,
 			upserted: totalUpserted,
-			quarter: OFGEM_CAP_Q1_2026.quarter,
+			regions: UK_REGIONS.length,
 			durationMs,
 		});
 	} catch (err) {
