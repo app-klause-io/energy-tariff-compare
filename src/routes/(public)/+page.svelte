@@ -1,3 +1,57 @@
+<script lang="ts">
+	import type { PropertyDetails, UsageHabits, Appliance } from '$lib/types/wizard';
+	import { DEFAULT_APPLIANCES } from '$lib/data/appliances';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import WizardStepper from '$lib/components/WizardStepper.svelte';
+	import WizardNav from '$lib/components/WizardNav.svelte';
+	import PropertyStep from '$lib/components/PropertyStep.svelte';
+	import ApplianceStep from '$lib/components/ApplianceStep.svelte';
+	import HabitsStep from '$lib/components/HabitsStep.svelte';
+
+	let showWizard = $state(false);
+	let step = $state(1);
+
+	let property = $state<PropertyDetails>({
+		type: null,
+		bedrooms: 2,
+		occupants: 2,
+		region: null,
+	});
+
+	let appliances = $state<Appliance[]>(DEFAULT_APPLIANCES.map((a) => ({ ...a })));
+
+	let habits = $state<UsageHabits>({
+		pattern: null,
+		overnightAppliances: false,
+		flexibility: null,
+	});
+
+	let canProceed = $derived.by(() => {
+		if (step === 1) {
+			return property.type !== null && property.region !== null;
+		}
+		if (step === 2) {
+			return true;
+		}
+		if (step === 3) {
+			return habits.pattern !== null && habits.flexibility !== null;
+		}
+		return false;
+	});
+
+	function startWizard() {
+		showWizard = true;
+	}
+
+	function goBack() {
+		if (step > 1) step--;
+	}
+
+	function goNext() {
+		if (step < 3 && canProceed) step++;
+	}
+</script>
+
 <svelte:head>
 	<title>Energy Tariff Compare — Find Your Cheapest Energy Deal</title>
 	<meta
@@ -10,27 +64,84 @@
 	<header
 		class="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8"
 	>
+		{#if showWizard}
+			<button
+				onclick={() => {
+					showWizard = false;
+					step = 1;
+				}}
+				class="text-sm font-medium text-slate-500 hover:text-slate-700"
+			>
+				<svg
+					class="mr-1 inline-block h-4 w-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+				</svg>
+				Back to home
+			</button>
+		{/if}
 		<span class="text-xl font-bold text-emerald-600">Energy Tariff Compare</span>
+		{#if showWizard}
+			<div class="w-20"></div>
+		{/if}
 	</header>
 
-	<main class="flex flex-1 items-center justify-center px-4 sm:px-6 lg:px-8">
-		<div class="mx-auto max-w-2xl text-center">
-			<div
-				class="inline-block rounded-full bg-emerald-100 px-4 py-1.5 text-sm font-medium text-emerald-700"
-			>
-				Coming soon
+	{#if !showWizard}
+		<main class="flex flex-1 items-center justify-center px-4 sm:px-6 lg:px-8">
+			<div class="mx-auto max-w-2xl text-center">
+				<div
+					class="inline-block rounded-full bg-emerald-100 px-4 py-1.5 text-sm font-medium text-emerald-700"
+				>
+					Free, no sign-up needed
+				</div>
+				<h1 class="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+					Find your cheapest energy tariff
+					<span class="text-emerald-600">in 2 minutes.</span>
+				</h1>
+				<p class="mt-6 text-lg leading-relaxed text-slate-500">
+					Built for EV owners, heat pump homes, and anyone tired of generic comparison sites. We
+					estimate your actual usage profile and compare it against live tariff rates.
+				</p>
+				<div class="mt-8">
+					<Button size="lg" onclick={startWizard} class="px-8 text-base">
+						Get Started
+						<svg
+							class="ml-2 h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+						</svg>
+					</Button>
+				</div>
+				<p class="mt-4 text-sm text-slate-400">Takes about 2 minutes. No email required.</p>
 			</div>
-			<h1 class="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-				Find your cheapest energy tariff
-				<span class="text-emerald-600">in 2 minutes.</span>
-			</h1>
-			<p class="mt-6 text-lg leading-relaxed text-slate-500">
-				Built for EV owners, heat pump homes, and anyone tired of generic comparison sites. We
-				estimate your actual usage profile and compare it against live tariff rates.
-			</p>
-			<p class="mt-8 text-sm text-slate-400">Full tool launching soon.</p>
-		</div>
-	</main>
+		</main>
+	{:else}
+		<main class="flex flex-1 flex-col">
+			<div class="mx-auto w-full max-w-2xl flex-1 px-4 py-6 sm:px-6">
+				<WizardStepper currentStep={step} />
+
+				{#if step === 1}
+					<PropertyStep bind:property />
+				{:else if step === 2}
+					<ApplianceStep bind:appliances />
+				{:else if step === 3}
+					<HabitsStep bind:habits />
+				{/if}
+			</div>
+
+			<div class="sticky bottom-0 mx-auto w-full max-w-2xl">
+				<WizardNav currentStep={step} {canProceed} onBack={goBack} onNext={goNext} />
+			</div>
+		</main>
+	{/if}
 
 	<footer class="border-t border-slate-200 px-4 py-8 text-center sm:px-6 lg:px-8">
 		<p class="text-xs text-slate-400">
