@@ -1,6 +1,5 @@
 node_modules
 .svelte-kit
 build
-drizzle
 pnpm-lock.yaml
 package-lock.json
