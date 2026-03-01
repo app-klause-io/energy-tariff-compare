@@ -145,11 +145,7 @@
 	>
 		{#if showWizard}
 			<button
-				onclick={() => {
-					showWizard = false;
-					showResults = false;
-					step = 1;
-				}}
+				onclick={resetWizard}
 				class="text-sm font-medium text-slate-500 hover:text-slate-700"
 			>
 				<svg
