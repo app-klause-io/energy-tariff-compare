@@ -1,14 +1,19 @@
 <script lang="ts">
 	import type { PropertyDetails, UsageHabits, Appliance } from '$lib/types/wizard';
+	import type { ComparisonResult } from '$lib/types/tariff';
 	import { DEFAULT_APPLIANCES } from '$lib/data/appliances';
+	import { calculateConsumption } from '$lib/models/consumption';
+	import { compareTariffs } from '$lib/models/comparison';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import WizardStepper from '$lib/components/WizardStepper.svelte';
 	import WizardNav from '$lib/components/WizardNav.svelte';
 	import PropertyStep from '$lib/components/PropertyStep.svelte';
 	import ApplianceStep from '$lib/components/ApplianceStep.svelte';
 	import HabitsStep from '$lib/components/HabitsStep.svelte';
+	import ResultsView from '$lib/components/ResultsView.svelte';
 
 	let showWizard = $state(false);
+	let showResults = $state(false);
 	let step = $state(1);
 
 	let property = $state<PropertyDetails>({
@@ -26,6 +31,9 @@
 		flexibility: null,
 	});
 
+	let results = $state<ComparisonResult[]>([]);
+	let annualKwh = $state(0);
+
 	let canProceed = $derived.by(() => {
 		if (step === 1) {
 			return property.type !== null && property.region !== null;
@@ -41,6 +49,7 @@
 
 	function startWizard() {
 		showWizard = true;
+		showResults = false;
 	}
 
 	function goBack() {
@@ -49,6 +58,40 @@
 
 	function goNext() {
 		if (step < 3 && canProceed) step++;
+	}
+
+	function calculateResults() {
+		if (!property.region) return;
+
+		// Calculate consumption profile
+		const profile = calculateConsumption(property, appliances, habits);
+		annualKwh = profile.annualKwh;
+
+		// Compare tariffs
+		results = compareTariffs(profile, property.region);
+
+		// Show results
+		showResults = true;
+	}
+
+	function resetWizard() {
+		showWizard = false;
+		showResults = false;
+		step = 1;
+		property = {
+			type: null,
+			bedrooms: 2,
+			occupants: 2,
+			region: null,
+		};
+		appliances = DEFAULT_APPLIANCES.map((a) => ({ ...a }));
+		habits = {
+			pattern: null,
+			overnightAppliances: false,
+			flexibility: null,
+		};
+		results = [];
+		annualKwh = 0;
 	}
 </script>
 
@@ -90,7 +133,7 @@
 		{/if}
 	</header>
 
-	{#if !showWizard}
+	{#if !showWizard && !showResults}
 		<main class="flex flex-1 items-center justify-center px-4 sm:px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl text-center">
 				<div
@@ -123,6 +166,10 @@
 				<p class="mt-4 text-sm text-slate-400">Takes about 2 minutes. No email required.</p>
 			</div>
 		</main>
+	{:else if showResults}
+		<main class="flex flex-1 flex-col">
+			<ResultsView {results} {annualKwh} onReset={resetWizard} />
+		</main>
 	{:else}
 		<main class="flex flex-1 flex-col">
 			<div class="mx-auto w-full max-w-2xl flex-1 px-4 py-6 sm:px-6">
@@ -138,7 +185,13 @@
 			</div>
 
 			<div class="sticky bottom-0 mx-auto w-full max-w-2xl">
-				<WizardNav currentStep={step} {canProceed} onBack={goBack} onNext={goNext} />
+				<WizardNav
+					currentStep={step}
+					{canProceed}
+					onBack={goBack}
+					onNext={goNext}
+					onResults={calculateResults}
+				/>
 			</div>
 		</main>
 	{/if}

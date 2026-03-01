@@ -6,9 +6,10 @@
 		canProceed: boolean;
 		onBack: () => void;
 		onNext: () => void;
+		onResults: () => void;
 	}
 
-	let { currentStep, canProceed, onBack, onNext }: Props = $props();
+	let { currentStep, canProceed, onBack, onNext, onResults }: Props = $props();
 
 	let isLastStep = $derived(currentStep === 3);
 </script>
@@ -32,7 +33,7 @@
 	{/if}
 
 	{#if isLastStep}
-		<Button disabled={true} class="opacity-60">
+		<Button disabled={!canProceed} onclick={onResults}>
 			See My Results
 			<svg
 				class="ml-1.5 h-4 w-4"
