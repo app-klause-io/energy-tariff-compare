@@ -1,15 +1,22 @@
 <script lang="ts">
 	import type { ComparisonResult } from '$lib/types/tariff';
+	import type { PropertyDetails, UsageHabits } from '$lib/types/wizard';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import FeedbackSection from '$lib/components/FeedbackSection.svelte';
 
 	interface Props {
 		results: ComparisonResult[];
 		annualKwh: number;
 		dailyProfile: number[];
 		onReset: () => void;
+		wizardSelections?: {
+			property: PropertyDetails;
+			appliances: { id: string; name: string; enabled: boolean }[];
+			habits: UsageHabits;
+		};
 	}
 
-	let { results, annualKwh, dailyProfile, onReset }: Props = $props();
+	let { results, annualKwh, dailyProfile, onReset, wizardSelections }: Props = $props();
 
 	let bestResult = $derived(results[0]);
 
@@ -199,9 +206,7 @@
 							<span class="text-slate-700">{period.label}</span>
 							<div class="text-right">
 								<span class="font-medium text-slate-900">{formatKwh(period.kwh)}</span>
-								<span class="ml-2 text-xs text-slate-500"
-									>({Math.round(period.percent)}%)</span
-								>
+								<span class="ml-2 text-xs text-slate-500">({Math.round(period.percent)}%)</span>
 							</div>
 						</div>
 					{/each}
@@ -285,6 +290,15 @@
 			{/each}
 		</div>
 	</div>
+
+	<!-- Feedback -->
+	{#if wizardSelections}
+		<FeedbackSection
+			bestTariff={bestResult.tariff.name}
+			annualCost={bestResult.annualCost}
+			{wizardSelections}
+		/>
+	{/if}
 
 	<!-- Action Buttons -->
 	<div class="mt-8 flex justify-center">
