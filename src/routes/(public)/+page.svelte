@@ -115,12 +115,14 @@
 <svelte:head>
 	<title
 		>{showResults
-			? 'Your Results — Energy Tariff Compare'
-			: 'Energy Tariff Compare — Find Your Cheapest Energy Deal'}</title
+			? 'Your Results — Best Energy Tariffs UK'
+			: 'Best Energy Tariffs UK — Compare Cheap Electricity Deals 2026'}</title
 	>
 	<meta
 		name="description"
-		content="Compare UK energy tariffs based on your actual usage. Built for EV owners, heat pump homes, and anyone tired of generic comparison sites."
+		content={showResults
+			? `Your personalised energy tariff comparison based on ${Math.round(annualKwh).toLocaleString()} kWh annual usage.`
+			: 'Compare cheap energy tariffs UK for 2026. Find the best electricity deals from Octopus, British Gas, EDF, E.ON and more. Built for EV owners and heat pump homes. Free, no sign-up.'}
 	/>
 </svelte:head>
 
@@ -150,7 +152,7 @@
 				Back to home
 			</button>
 		{/if}
-		<span class="text-xl font-bold text-emerald-600">Energy Tariff Compare</span>
+		<span class="text-xl font-bold text-emerald-600">Best Energy Tariffs</span>
 		{#if showWizard}
 			<div class="w-20"></div>
 		{/if}
@@ -165,12 +167,13 @@
 					Free, no sign-up needed
 				</div>
 				<h1 class="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-					Find your cheapest energy tariff
+					Compare cheap energy tariffs
 					<span class="text-emerald-600">in 2 minutes.</span>
 				</h1>
 				<p class="mt-6 text-lg leading-relaxed text-slate-500">
-					Built for EV owners, heat pump homes, and anyone tired of generic comparison sites. We
-					estimate your actual usage profile and compare it against live tariff rates.
+					Find the best electricity deals from Octopus, British Gas, EDF, E.ON and more. Built for
+					EV owners, heat pump homes, and anyone tired of generic comparison sites. We estimate
+					your actual usage and compare against live UK tariff rates.
 				</p>
 				<div class="mt-8">
 					<Button size="lg" onclick={startWizard} class="px-8 text-base">
@@ -264,7 +267,7 @@
 
 	<footer class="border-t border-slate-200 px-4 py-8 text-center sm:px-6 lg:px-8">
 		<p class="text-xs text-slate-400">
-			&copy; {new Date().getFullYear()} Energy Tariff Compare. All rights reserved.
+			&copy; {new Date().getFullYear()} Best Energy Tariffs. All rights reserved.
 		</p>
 	</footer>
 </div>
