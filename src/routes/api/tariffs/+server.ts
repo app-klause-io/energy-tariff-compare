@@ -1,6 +1,8 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import type { Tariff } from '$lib/types/tariff';
 import { fetchTariffsForRegion, convertTariffInfoToTariff } from '$lib/services/octopus';
+import { fetchStoredTariffsForRegion } from '$lib/services/storedTariffs';
 import { getTariffsForRegion as getFallbackTariffs } from '$lib/data/tariffs';
 import { UK_REGIONS } from '$lib/data/regions';
 import { logger } from '$lib/server/logger';
@@ -17,30 +19,56 @@ export const GET: RequestHandler = async ({ url }) => {
 		throw error(400, `Invalid region: ${region}`);
 	}
 
-	try {
-		const tariffInfos = await fetchTariffsForRegion(validRegion.value);
-		const tariffs = tariffInfos.map((info) => convertTariffInfoToTariff(info, validRegion.value));
+	// Fetch live Octopus tariffs and stored tariffs (from DB) in parallel
+	const [octopusResult, storedResult] = await Promise.allSettled([
+		fetchTariffsForRegion(validRegion.value).then((infos) =>
+			infos.map((info) => convertTariffInfoToTariff(info, validRegion.value)),
+		),
+		fetchStoredTariffsForRegion(validRegion.value),
+	]);
 
+	const liveTariffs: Tariff[] =
+		octopusResult.status === 'fulfilled' ? octopusResult.value : [];
+	const dbTariffs: Tariff[] =
+		storedResult.status === 'fulfilled' ? storedResult.value : [];
+
+	if (octopusResult.status === 'rejected') {
+		logger.error('tariffs.octopusFetchError', {
+			region: validRegion.value,
+			error:
+				octopusResult.reason instanceof Error
+					? octopusResult.reason.message
+					: String(octopusResult.reason),
+		});
+	}
+
+	// Merge: live Octopus tariffs take priority, then stored tariffs from DB.
+	// De-duplicate by supplier: if a supplier appears in live data, skip stored version.
+	const liveSuppliers = new Set(liveTariffs.map((t) => t.supplier));
+	const mergedTariffs = [
+		...liveTariffs,
+		...dbTariffs.filter((t) => !liveSuppliers.has(t.supplier)),
+	];
+
+	if (mergedTariffs.length > 0) {
 		logger.info('tariffs.fetch', {
 			region: validRegion.value,
-			tariffCount: tariffs.length,
-			source: 'live',
+			live: liveTariffs.length,
+			stored: dbTariffs.length,
+			merged: mergedTariffs.length,
+			source: 'merged',
 		});
 
-		return json({ tariffs, source: 'live' });
-	} catch (err) {
-		logger.error('tariffs.fetchError', {
-			region: validRegion.value,
-			error: err instanceof Error ? err.message : String(err),
-		});
-
-		const fallbackTariffs = getFallbackTariffs(validRegion.value);
-
-		logger.info('tariffs.fallback', {
-			region: validRegion.value,
-			tariffCount: fallbackTariffs.length,
-		});
-
-		return json({ tariffs: fallbackTariffs, source: 'fallback' });
+		return json({ tariffs: mergedTariffs, source: 'merged' });
 	}
+
+	// Final fallback: hardcoded data
+	const fallbackTariffs = getFallbackTariffs(validRegion.value);
+
+	logger.info('tariffs.fallback', {
+		region: validRegion.value,
+		tariffCount: fallbackTariffs.length,
+	});
+
+	return json({ tariffs: fallbackTariffs, source: 'fallback' });
 };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { convertStoredToTariff } from './storedTariffs';
+import { convertStoredToTariffs } from './storedTariffs';
 import type { TariffRecord } from '$lib/server/db';
 
 function makeTariffRecord(overrides: Partial<TariffRecord> = {}): TariffRecord {
@@ -27,21 +27,22 @@ function makeTariffRecord(overrides: Partial<TariffRecord> = {}): TariffRecord {
 	};
 }
 
-describe('convertStoredToTariff', () => {
-	it('converts a flat-rate tariff correctly', () => {
+describe('convertStoredToTariffs', () => {
+	it('converts a flat-rate octopus tariff correctly', () => {
 		const record = makeTariffRecord();
-		const tariff = convertStoredToTariff(record, 'london');
+		const tariffs = convertStoredToTariffs(record, 'london');
 
-		expect(tariff).not.toBeNull();
-		expect(tariff!.name).toBe('Test Tariff');
-		expect(tariff!.supplier).toBe('Octopus Energy');
-		expect(tariff!.type).toBe('flat');
-		expect(tariff!.standingCharge).toBe(60.11);
-		expect(tariff!.rates).toHaveLength(1);
-		expect(tariff!.rates[0].startSlot).toBe(0);
-		expect(tariff!.rates[0].endSlot).toBe(48);
-		expect(tariff!.rates[0].unitRate).toBe(24.5);
-		expect(tariff!.region).toBe('london');
+		expect(tariffs).toHaveLength(1);
+		const tariff = tariffs[0];
+		expect(tariff.name).toBe('Test Tariff');
+		expect(tariff.supplier).toBe('Octopus Energy');
+		expect(tariff.type).toBe('flat');
+		expect(tariff.standingCharge).toBe(60.11);
+		expect(tariff.rates).toHaveLength(1);
+		expect(tariff.rates[0].startSlot).toBe(0);
+		expect(tariff.rates[0].endSlot).toBe(48);
+		expect(tariff.rates[0].unitRate).toBe(24.5);
+		expect(tariff.region).toBe('london');
 	});
 
 	it('converts a tariff with half-hourly rate data', () => {
@@ -57,57 +58,83 @@ describe('convertStoredToTariff', () => {
 			},
 		});
 
-		const tariff = convertStoredToTariff(record, 'london');
+		const tariffs = convertStoredToTariffs(record, 'london');
 
-		expect(tariff).not.toBeNull();
-		expect(tariff!.type).toBe('agile');
-		expect(tariff!.rates.length).toBeGreaterThanOrEqual(2);
+		expect(tariffs).toHaveLength(1);
+		const tariff = tariffs[0];
+		expect(tariff.type).toBe('agile');
+		expect(tariff.rates.length).toBeGreaterThanOrEqual(2);
 
-		const offPeakRate = tariff!.rates.find((r) => r.unitRate === 10);
+		const offPeakRate = tariff.rates.find((r) => r.unitRate === 10);
 		expect(offPeakRate).toBeDefined();
 		expect(offPeakRate!.startSlot).toBe(0);
 		expect(offPeakRate!.endSlot).toBe(14);
 
-		const peakRate = tariff!.rates.find((r) => r.unitRate === 25);
+		const peakRate = tariff.rates.find((r) => r.unitRate === 25);
 		expect(peakRate).toBeDefined();
 		expect(peakRate!.startSlot).toBe(14);
 		expect(peakRate!.endSlot).toBe(48);
 	});
 
-	it('maps provider names to supplier labels', () => {
-		const octopus = convertStoredToTariff(makeTariffRecord({ provider: 'octopus' }), 'london');
-		expect(octopus!.supplier).toBe('Octopus Energy');
+	it('expands ofgem_cap direct_debit records into individual provider tariffs', () => {
+		const record = makeTariffRecord({
+			provider: 'ofgem_cap',
+			tariff_name: 'Price Cap (Q1 2026)',
+			payment_method: 'direct_debit',
+		});
 
-		const ofgem = convertStoredToTariff(makeTariffRecord({ provider: 'ofgem_cap' }), 'london');
-		expect(ofgem!.supplier).toBe('Price Cap');
+		const tariffs = convertStoredToTariffs(record, 'london');
 
-		const elexon = convertStoredToTariff(makeTariffRecord({ provider: 'elexon' }), 'london');
-		expect(elexon!.supplier).toBe('Wholesale');
+		expect(tariffs.length).toBe(5);
+		const suppliers = tariffs.map((t) => t.supplier);
+		expect(suppliers).toContain('British Gas');
+		expect(suppliers).toContain('EDF');
+		expect(suppliers).toContain('E.ON');
+		expect(suppliers).toContain('Scottish Power');
+		expect(suppliers).toContain('OVO Energy');
 
-		const unknown = convertStoredToTariff(makeTariffRecord({ provider: 'british_gas' }), 'london');
-		expect(unknown!.supplier).toBe('british_gas');
+		for (const tariff of tariffs) {
+			expect(tariff.rates[0].unitRate).toBe(24.5);
+			expect(tariff.standingCharge).toBe(60.11);
+		}
 	});
 
-	it('returns null when unit_rate_p is missing and no half-hourly data', () => {
+	it('skips ofgem_cap prepayment records', () => {
+		const record = makeTariffRecord({
+			provider: 'ofgem_cap',
+			payment_method: 'prepayment',
+		});
+
+		const tariffs = convertStoredToTariffs(record, 'london');
+		expect(tariffs).toHaveLength(0);
+	});
+
+	it('skips elexon wholesale records', () => {
+		const record = makeTariffRecord({ provider: 'elexon' });
+		const tariffs = convertStoredToTariffs(record, 'london');
+		expect(tariffs).toHaveLength(0);
+	});
+
+	it('returns empty array when unit_rate_p is missing and no half-hourly data', () => {
 		const record = makeTariffRecord({
 			unit_rate_p: undefined,
 			rate_data: { type: 'flat' },
 		});
 
-		const tariff = convertStoredToTariff(record, 'london');
-		expect(tariff).toBeNull();
+		const tariffs = convertStoredToTariffs(record, 'london');
+		expect(tariffs).toHaveLength(0);
 	});
 
-	it('generates a unique ID from provider and database ID', () => {
+	it('generates unique IDs for octopus tariffs', () => {
 		const record = makeTariffRecord({ id: 42, provider: 'octopus' });
-		const tariff = convertStoredToTariff(record, 'london');
-		expect(tariff!.id).toBe('stored-octopus-42');
+		const tariffs = convertStoredToTariffs(record, 'london');
+		expect(tariffs[0].id).toBe('stored-octopus-42');
 	});
 
 	it('uses region parameter for the tariff region', () => {
 		const record = makeTariffRecord();
-		const tariff = convertStoredToTariff(record, 'yorkshire');
-		expect(tariff!.region).toBe('yorkshire');
+		const tariffs = convertStoredToTariffs(record, 'yorkshire');
+		expect(tariffs[0].region).toBe('yorkshire');
 	});
 
 	it('handles retail_p_kwh format in half-hourly data', () => {
@@ -123,15 +150,15 @@ describe('convertStoredToTariff', () => {
 			},
 		});
 
-		const tariff = convertStoredToTariff(record, 'london');
-		expect(tariff).not.toBeNull();
-		expect(tariff!.rates).toHaveLength(1);
-		expect(tariff!.rates[0].unitRate).toBe(20);
+		const tariffs = convertStoredToTariffs(record, 'london');
+		expect(tariffs).toHaveLength(1);
+		expect(tariffs[0].rates).toHaveLength(1);
+		expect(tariffs[0].rates[0].unitRate).toBe(20);
 	});
 
 	it('defaults standing charge to 0 when missing', () => {
 		const record = makeTariffRecord({ standing_charge_p: undefined });
-		const tariff = convertStoredToTariff(record, 'london');
-		expect(tariff!.standingCharge).toBe(0);
+		const tariffs = convertStoredToTariffs(record, 'london');
+		expect(tariffs[0].standingCharge).toBe(0);
 	});
 });
