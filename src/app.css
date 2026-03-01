@@ -1,14 +1,14 @@
 @import 'tailwindcss';
 
 @theme {
-	--color-sky-50: #f0f9ff;
-	--color-sky-100: #e0f2fe;
-	--color-sky-200: #bae6fd;
-	--color-sky-300: #7dd3fc;
-	--color-sky-400: #38bdf8;
-	--color-sky-500: #0ea5e9;
-	--color-sky-600: #0284c7;
-	--color-sky-700: #0369a1;
+	--color-emerald-50: #ecfdf5;
+	--color-emerald-100: #d1fae5;
+	--color-emerald-200: #a7f3d0;
+	--color-emerald-300: #6ee7b7;
+	--color-emerald-400: #34d399;
+	--color-emerald-500: #10b981;
+	--color-emerald-600: #059669;
+	--color-emerald-700: #047857;
 
 	--color-slate-50: #f8fafc;
 	--color-slate-100: #f1f5f9;
@@ -23,4 +23,71 @@
 	--color-slate-950: #020617;
 
 	--font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Mobile touch targets: ensure minimum 44px tap targets */
+@media (max-width: 639px) {
+	button,
+	[role='button'],
+	a {
+		min-height: 44px;
+		min-width: 44px;
+	}
+
+	p a,
+	li a,
+	span a,
+	.text-xs a,
+	.text-sm a {
+		min-height: auto;
+		min-width: auto;
+	}
+}
+
+html,
+body {
+	overflow-x: hidden;
+}
+
+:focus-visible {
+	outline: 2px solid #059669;
+	outline-offset: 2px;
+}
+
+main {
+	animation: fadeIn 0.15s ease-out;
+}
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+[data-card-interactive] {
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.15s ease;
+}
+[data-card-interactive]:hover {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+	transform: translateY(-1px);
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+.animate-shimmer {
+	background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s ease-in-out infinite;
 }

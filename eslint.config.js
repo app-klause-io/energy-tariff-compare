@@ -23,7 +23,6 @@ export default ts.config(
 			},
 		},
 		rules: {
-			// Static href links don't need resolveRoute — only dynamic params do
 			'svelte/no-navigation-without-resolve': 'off',
 		},
 	},
@@ -41,7 +40,6 @@ export default ts.config(
 			'.svelte-kit/',
 			'build/',
 			'node_modules/',
-			'drizzle/',
 			'.vercel/',
 			'playwright-report/',
 			'test-results/',

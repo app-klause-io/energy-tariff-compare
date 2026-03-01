@@ -1,66 +1,40 @@
 ---
 name: api-route
-description: Create a SvelteKit API route (+server.ts). Use ONLY for webhooks, cron jobs, file downloads, or external service endpoints. Never for page data or form mutations.
+description: Create a SvelteKit API route (+server.ts) for fetching external data (e.g. Octopus Energy API). Used for server-side API proxying with caching.
 ---
 
 # API Route Pattern
 
-API routes (`+server.ts`) are ONLY for:
+API routes (`+server.ts`) in this project are for:
 
-- **Webhooks** (Clerk, Stripe) — external services POST to these
-- **File downloads** (.ics calendar files, CSV exports)
-- **Cron jobs** — Vercel cron hits these endpoints
-- **External API consumers** — if a third-party service needs data
+- **External API proxy** — fetch Octopus Energy tariff data server-side
+- **Data transformation** — process and cache API responses
 
-**Never use for:**
-
-- Loading data for a page → use `+page.server.ts` load function
-- Form mutations → use form actions in `+page.server.ts`
-
-## Webhook Example
+## Example
 
 ```typescript
-// src/routes/api/webhooks/{service}/+server.ts
+// src/routes/api/tariffs/+server.ts
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { logger } from '$lib/server/logger';
 
-export const POST: RequestHandler = async ({ request }) => {
-	// 1. Verify signature
-	// 2. Parse and validate payload with Zod
-	// 3. Process the event
-	// 4. Return acknowledgement
+export const GET: RequestHandler = async ({ url }) => {
+	const region = url.searchParams.get('region');
+	if (!region) throw error(400, 'Region parameter required');
 
-	logger.info('Webhook received', { type: 'service.event' });
-	return json({ received: true });
-};
-```
+	// Fetch from external API
+	// Validate with Zod
+	// Return shaped response
 
-## File Download Example
-
-```typescript
-// src/routes/api/bookings/[id]/ics/+server.ts
-import type { RequestHandler } from './$types';
-
-export const GET: RequestHandler = async ({ params, locals }) => {
-	// 1. Auth check
-	// 2. Fetch data (scoped by groupId)
-	// 3. Generate file content
-	// 4. Return with correct headers
-
-	return new Response(icsContent, {
-		headers: {
-			'Content-Type': 'text/calendar',
-			'Content-Disposition': `attachment; filename="booking.ics"`,
-		},
-	});
+	logger.info('tariffs.fetch', { region });
+	return json({ tariffs: [] });
 };
 ```
 
 ## Rules
 
-- Always validate request body/params with Zod
+- Always validate query params with Zod
 - Always return proper HTTP status codes
-- Log all API route hits (method, path, userId, status)
-- Webhooks must verify signatures before processing
-- Never use GET for mutations
+- Log all API route hits
+- Cache responses where appropriate (tariff data doesn't change frequently)
+- Never expose API keys to the client

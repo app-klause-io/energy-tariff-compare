@@ -1,7 +1,5 @@
 <script lang="ts">
 	import '../app.css';
-	import { ClerkProvider } from 'svelte-clerk/components';
-	import { env } from '$env/dynamic/public';
 
 	let { children } = $props();
 </script>
@@ -15,6 +13,4 @@
 	/>
 </svelte:head>
 
-<ClerkProvider publishableKey={env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? ''}>
-	{@render children()}
-</ClerkProvider>
+{@render children()}
