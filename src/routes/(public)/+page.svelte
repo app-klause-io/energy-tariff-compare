@@ -63,15 +63,23 @@
 	function calculateResults() {
 		if (!property.region) return;
 
-		// Calculate consumption profile
-		const profile = calculateConsumption(property, appliances, habits);
-		annualKwh = profile.annualKwh;
+		try {
+			// Calculate consumption profile
+			const profile = calculateConsumption(property, appliances, habits);
+			annualKwh = profile.annualKwh;
 
-		// Compare tariffs
-		results = compareTariffs(profile, property.region);
+			// Compare tariffs
+			results = compareTariffs(profile, property.region);
 
-		// Show results
-		showResults = true;
+			// Show results
+			showResults = true;
+		} catch (error) {
+			console.error('Failed to calculate results:', error);
+			// Show results with empty array to trigger error state in ResultsView
+			results = [];
+			annualKwh = 0;
+			showResults = true;
+		}
 	}
 
 	function resetWizard() {
@@ -107,10 +115,11 @@
 	<header
 		class="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8"
 	>
-		{#if showWizard}
+		{#if showWizard || showResults}
 			<button
 				onclick={() => {
 					showWizard = false;
+					showResults = false;
 					step = 1;
 				}}
 				class="text-sm font-medium text-slate-500 hover:text-slate-700"
@@ -128,7 +137,7 @@
 			</button>
 		{/if}
 		<span class="text-xl font-bold text-emerald-600">Energy Tariff Compare</span>
-		{#if showWizard}
+		{#if showWizard || showResults}
 			<div class="w-20"></div>
 		{/if}
 	</header>
