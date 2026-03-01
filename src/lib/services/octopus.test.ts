@@ -8,6 +8,9 @@ import {
 	fetchUnitRates,
 	fetchStandingCharges,
 	fetchTariffsForRegion,
+	convertTariffInfoToTariff,
+	buildTariffCode,
+	classifyProduct,
 } from './octopus';
 import { getGspGroupId, UK_REGIONS } from '$lib/data/regions';
 import {
@@ -356,6 +359,161 @@ describe('Tariff code construction', () => {
 
 		const scotlandGsp = getGspGroupId('north-scotland');
 		expect(`E-1R-GO-VAR-22-10-14-${scotlandGsp}`).toBe('E-1R-GO-VAR-22-10-14-_P');
+	});
+});
+
+describe('buildTariffCode', () => {
+	it('builds correct single-register tariff code', () => {
+		expect(buildTariffCode('AGILE-FLEX-22-11-25', '_C')).toBe('E-1R-AGILE-FLEX-22-11-25-_C');
+	});
+
+	it('builds correct code for different regions', () => {
+		expect(buildTariffCode('GO-VAR-22-10-14', '_A')).toBe('E-1R-GO-VAR-22-10-14-_A');
+		expect(buildTariffCode('GO-VAR-22-10-14', '_P')).toBe('E-1R-GO-VAR-22-10-14-_P');
+	});
+});
+
+describe('classifyProduct', () => {
+	function makeProduct(displayName: string) {
+		return {
+			code: 'TEST',
+			direction: 'IMPORT',
+			display_name: displayName,
+			description: 'Test',
+			is_variable: true,
+			is_green: false,
+			is_tracker: false,
+			is_prepay: false,
+			is_business: false,
+			brand: 'OCTOPUS_ENERGY',
+			available_from: '2024-01-01T00:00:00Z',
+			available_to: null,
+		};
+	}
+
+	it('classifies Flexible Octopus as standard', () => {
+		expect(classifyProduct(makeProduct('Flexible Octopus'))).toEqual({ type: 'standard' });
+	});
+
+	it('classifies Agile Octopus as agile', () => {
+		expect(classifyProduct(makeProduct('Agile Octopus'))).toEqual({ type: 'agile' });
+	});
+
+	it('classifies Octopus Go as go with off-peak hours', () => {
+		expect(classifyProduct(makeProduct('Octopus Go'))).toEqual({
+			type: 'go',
+			offPeakHours: '00:30-05:30',
+		});
+	});
+
+	it('classifies Intelligent Octopus Go', () => {
+		expect(classifyProduct(makeProduct('Intelligent Octopus Go'))).toEqual({
+			type: 'intelligent-go',
+			offPeakHours: '23:30-05:30',
+		});
+	});
+
+	it('classifies Cosy Octopus', () => {
+		expect(classifyProduct(makeProduct('Cosy Octopus'))).toEqual({ type: 'cosy' });
+	});
+
+	it('returns null for unknown products', () => {
+		expect(classifyProduct(makeProduct('Some Other Tariff'))).toBeNull();
+	});
+});
+
+describe('convertTariffInfoToTariff', () => {
+	it('converts a standard tariff to a flat-rate Tariff', () => {
+		const info = {
+			productCode: 'VAR-22-11-01',
+			name: 'Flexible Octopus',
+			description: 'Standard variable',
+			type: 'standard' as const,
+			isGreen: false,
+			unitRates: [
+				{
+					value_exc_vat: 23.33,
+					value_inc_vat: 24.5,
+					valid_from: '2024-01-01T00:00:00Z',
+					valid_to: null,
+					payment_method: null,
+				},
+			],
+			standingChargePence: 60.11,
+			hasMultipleRates: false,
+		};
+
+		const tariff = convertTariffInfoToTariff(info, 'london');
+
+		expect(tariff.name).toBe('Flexible Octopus');
+		expect(tariff.supplier).toBe('Octopus Energy');
+		expect(tariff.type).toBe('standard');
+		expect(tariff.standingCharge).toBe(60.11);
+		expect(tariff.region).toBe('london');
+		expect(tariff.rates).toHaveLength(1);
+		expect(tariff.rates[0].startSlot).toBe(0);
+		expect(tariff.rates[0].endSlot).toBe(48);
+		expect(tariff.rates[0].unitRate).toBeCloseTo(24.5, 1);
+	});
+
+	it('converts a multi-rate (go) tariff with off-peak and standard', () => {
+		const rates = [];
+		for (let i = 0; i < 48; i++) {
+			const hour = Math.floor(i / 2);
+			const minute = (i % 2) * 30;
+			const isCheap = i >= 1 && i < 9;
+			rates.push({
+				value_exc_vat: (isCheap ? 9.0 : 24.88) / 1.05,
+				value_inc_vat: isCheap ? 9.0 : 24.88,
+				valid_from: `2024-01-01T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00Z`,
+				valid_to: null,
+				payment_method: null,
+			});
+		}
+
+		const info = {
+			productCode: 'GO-VAR-22-10-14',
+			name: 'Octopus Go',
+			description: 'EV tariff',
+			type: 'go' as const,
+			isGreen: false,
+			unitRates: rates,
+			standingChargePence: 60.11,
+			hasMultipleRates: true,
+			offPeakRate: 9.0,
+			peakRate: 24.88,
+			offPeakHours: '00:30-04:30',
+		};
+
+		const tariff = convertTariffInfoToTariff(info, 'london');
+
+		expect(tariff.type).toBe('go');
+		expect(tariff.rates.length).toBeGreaterThanOrEqual(2);
+
+		// Check all 48 slots are covered
+		const coveredSlots = new Set<number>();
+		for (const rate of tariff.rates) {
+			for (let slot = rate.startSlot; slot < rate.endSlot; slot++) {
+				coveredSlots.add(slot);
+			}
+		}
+		expect(coveredSlots.size).toBe(48);
+	});
+
+	it('handles empty unit rates', () => {
+		const info = {
+			productCode: 'EMPTY-01',
+			name: 'Empty',
+			description: 'No rates',
+			type: 'standard' as const,
+			isGreen: false,
+			unitRates: [],
+			standingChargePence: 60.0,
+			hasMultipleRates: false,
+		};
+
+		const tariff = convertTariffInfoToTariff(info, 'london');
+		expect(tariff.rates).toHaveLength(0);
 	});
 });
 
