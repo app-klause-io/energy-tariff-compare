@@ -3,7 +3,7 @@
 	import type { ComparisonResult } from '$lib/types/tariff';
 	import { DEFAULT_APPLIANCES } from '$lib/data/appliances';
 	import { calculateConsumption } from '$lib/models/consumption';
-	import { compareTariffs } from '$lib/models/comparison';
+	import { compareTariffsWithData } from '$lib/models/comparison';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import WizardStepper from '$lib/components/WizardStepper.svelte';
 	import WizardNav from '$lib/components/WizardNav.svelte';
@@ -62,7 +62,7 @@
 		if (step < 3 && canProceed) step++;
 	}
 
-	function calculateResults() {
+	async function calculateResults() {
 		if (!property.region) return;
 
 		isCalculating = true;
@@ -71,7 +71,14 @@
 		try {
 			const profile = calculateConsumption(property, appliances, habits);
 			annualKwh = profile.annualKwh;
-			results = compareTariffs(profile, property.region);
+
+			const response = await fetch(`/api/tariffs?region=${property.region}`);
+			if (!response.ok) {
+				throw new Error(`Failed to fetch tariffs: ${response.status}`);
+			}
+			const data = await response.json();
+
+			results = compareTariffsWithData(profile, data.tariffs);
 			showResults = true;
 		} catch {
 			calculationError = 'Unable to calculate results. Please check your inputs and try again.';
