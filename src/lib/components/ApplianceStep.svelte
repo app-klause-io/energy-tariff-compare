@@ -42,6 +42,7 @@
 					onclick={() => toggleAppliance(appliance.id)}
 					class="flex w-full items-center gap-3 p-4"
 					aria-pressed={appliance.enabled}
+					aria-label="Toggle {appliance.name}"
 				>
 					<span class="text-2xl">{appliance.icon}</span>
 					<div class="flex-1 text-left">
@@ -77,6 +78,7 @@
 									{appliance.selectedSubOption === opt.value
 										? 'bg-emerald-600 text-white'
 										: 'bg-white text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'}"
+									aria-pressed={appliance.selectedSubOption === opt.value}
 								>
 									{opt.label}
 								</button>

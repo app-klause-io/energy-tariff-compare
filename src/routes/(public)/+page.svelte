@@ -33,6 +33,8 @@
 
 	let results = $state<ComparisonResult[]>([]);
 	let annualKwh = $state(0);
+	let isCalculating = $state(false);
+	let calculationError = $state<string | null>(null);
 
 	let canProceed = $derived.by(() => {
 		if (step === 1) {
@@ -63,15 +65,19 @@
 	function calculateResults() {
 		if (!property.region) return;
 
-		// Calculate consumption profile
-		const profile = calculateConsumption(property, appliances, habits);
-		annualKwh = profile.annualKwh;
+		isCalculating = true;
+		calculationError = null;
 
-		// Compare tariffs
-		results = compareTariffs(profile, property.region);
-
-		// Show results
-		showResults = true;
+		try {
+			const profile = calculateConsumption(property, appliances, habits);
+			annualKwh = profile.annualKwh;
+			results = compareTariffs(profile, property.region);
+			showResults = true;
+		} catch {
+			calculationError = 'Unable to calculate results. Please check your inputs and try again.';
+		} finally {
+			isCalculating = false;
+		}
 	}
 
 	function resetWizard() {
@@ -92,14 +98,19 @@
 		};
 		results = [];
 		annualKwh = 0;
+		calculationError = null;
 	}
 </script>
 
 <svelte:head>
-	<title>Energy Tariff Compare — Find Your Cheapest Energy Deal</title>
+	<title
+		>{showResults
+			? 'Your Results — Energy Tariff Compare'
+			: 'Energy Tariff Compare — Find Your Cheapest Energy Deal'}</title
+	>
 	<meta
 		name="description"
-		content="Compare energy tariffs based on your actual usage. Built for EV owners, heat pump homes, and anyone tired of generic comparison sites."
+		content="Compare UK energy tariffs based on your actual usage. Built for EV owners, heat pump homes, and anyone tired of generic comparison sites."
 	/>
 </svelte:head>
 
@@ -111,6 +122,7 @@
 			<button
 				onclick={() => {
 					showWizard = false;
+					showResults = false;
 					step = 1;
 				}}
 				class="text-sm font-medium text-slate-500 hover:text-slate-700"
@@ -121,6 +133,7 @@
 					viewBox="0 0 24 24"
 					stroke="currentColor"
 					stroke-width="2"
+					aria-hidden="true"
 				>
 					<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
 				</svg>
@@ -158,12 +171,23 @@
 							viewBox="0 0 24 24"
 							stroke="currentColor"
 							stroke-width="2"
+							aria-hidden="true"
 						>
 							<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 						</svg>
 					</Button>
 				</div>
 				<p class="mt-4 text-sm text-slate-400">Takes about 2 minutes. No email required.</p>
+			</div>
+		</main>
+	{:else if isCalculating}
+		<main class="flex flex-1 items-center justify-center px-4 sm:px-6 lg:px-8">
+			<div class="text-center" role="status" aria-label="Calculating your results">
+				<div
+					class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-emerald-600"
+				></div>
+				<p class="mt-4 text-lg font-medium text-slate-700">Crunching your numbers...</p>
+				<p class="mt-1 text-sm text-slate-500">Comparing tariffs for your usage profile</p>
 			</div>
 		</main>
 	{:else if showResults}
@@ -174,6 +198,28 @@
 		<main class="flex flex-1 flex-col">
 			<div class="mx-auto w-full max-w-2xl flex-1 px-4 py-6 sm:px-6">
 				<WizardStepper currentStep={step} />
+
+				{#if calculationError}
+					<div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3" role="alert">
+						<div class="flex items-center gap-2">
+							<svg
+								class="h-5 w-5 flex-shrink-0 text-red-600"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2"
+								aria-hidden="true"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+								/>
+							</svg>
+							<p class="text-sm font-medium text-red-800">{calculationError}</p>
+						</div>
+					</div>
+				{/if}
 
 				{#if step === 1}
 					<PropertyStep bind:property />

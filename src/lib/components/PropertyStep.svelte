@@ -9,10 +9,10 @@
 	let { property = $bindable() }: Props = $props();
 
 	const propertyTypes: { value: PropertyType; label: string; icon: string }[] = [
-		{ value: 'flat', label: 'Flat', icon: '\u{1F3E2}' },
-		{ value: 'terrace', label: 'Terrace', icon: '\u{1F3D8}\u{FE0F}' },
-		{ value: 'semi-detached', label: 'Semi-detached', icon: '\u{1F3E0}' },
-		{ value: 'detached', label: 'Detached', icon: '\u{1F3E1}' },
+		{ value: 'flat', label: 'Flat', icon: '🏢' },
+		{ value: 'terrace', label: 'Terrace', icon: '🏘️' },
+		{ value: 'semi-detached', label: 'Semi-detached', icon: '🏠' },
+		{ value: 'detached', label: 'Detached', icon: '🏡' },
 	];
 
 	const bedroomOptions = [1, 2, 3, 4, 5];
@@ -38,9 +38,15 @@
 
 <div class="space-y-8">
 	<div>
-		<h2 class="text-lg font-semibold text-slate-900">What type of property?</h2>
+		<h2 class="text-lg font-semibold text-slate-900" id="property-type-label">
+			What type of property?
+		</h2>
 		<p class="mt-1 text-sm text-slate-500">This helps us estimate your base energy usage.</p>
-		<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+		<div
+			class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"
+			role="group"
+			aria-labelledby="property-type-label"
+		>
 			{#each propertyTypes as pt (pt.value)}
 				<button
 					type="button"
@@ -59,8 +65,8 @@
 	</div>
 
 	<div>
-		<h2 class="text-lg font-semibold text-slate-900">How many bedrooms?</h2>
-		<div class="mt-3 flex flex-wrap gap-2">
+		<h2 class="text-lg font-semibold text-slate-900" id="bedrooms-label">How many bedrooms?</h2>
+		<div class="mt-3 flex flex-wrap gap-2" role="group" aria-labelledby="bedrooms-label">
 			{#each bedroomOptions as count (count)}
 				<button
 					type="button"
@@ -70,6 +76,7 @@
 						? 'bg-emerald-600 text-white'
 						: 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
 					aria-pressed={property.bedrooms === count}
+					aria-label="{count}{count === 5 ? ' or more' : ''} bedrooms"
 				>
 					{count}{count === 5 ? '+' : ''}
 				</button>
@@ -78,8 +85,10 @@
 	</div>
 
 	<div>
-		<h2 class="text-lg font-semibold text-slate-900">How many people live here?</h2>
-		<div class="mt-3 flex flex-wrap gap-2">
+		<h2 class="text-lg font-semibold text-slate-900" id="occupants-label">
+			How many people live here?
+		</h2>
+		<div class="mt-3 flex flex-wrap gap-2" role="group" aria-labelledby="occupants-label">
 			{#each occupantOptions as count (count)}
 				<button
 					type="button"
@@ -89,6 +98,7 @@
 						? 'bg-emerald-600 text-white'
 						: 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
 					aria-pressed={property.occupants === count}
+					aria-label="{count}{count === 4 ? ' or more' : ''} occupants"
 				>
 					{count}{count === 4 ? '+' : ''}
 				</button>
