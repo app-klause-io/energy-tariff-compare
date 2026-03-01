@@ -128,6 +128,9 @@ function getCurrentQuarterRates(rates: RegionalRates): {
 	};
 }
 
+// Vercel Cron sends GET requests — alias so both methods work.
+export { POST as GET };
+
 export const POST: RequestHandler = async ({ request }) => {
 	validateBearerToken(request);
 

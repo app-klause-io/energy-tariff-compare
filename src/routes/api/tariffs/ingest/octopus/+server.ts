@@ -15,6 +15,9 @@ import { logger } from '$lib/server/logger';
 
 let tableReady = false;
 
+// Vercel Cron sends GET requests — alias so both methods work.
+export { POST as GET };
+
 export const POST: RequestHandler = async ({ request }) => {
 	validateBearerToken(request);
 

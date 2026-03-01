@@ -59,6 +59,9 @@ function wholesaleToRetailPence(priceGbpMwh: number): number {
 	return Math.round((wholesalePencePerKwh + nonCommodityUplift) * 100) / 100;
 }
 
+// Vercel Cron sends GET requests — alias so both methods work.
+export { POST as GET };
+
 export const POST: RequestHandler = async ({ request }) => {
 	validateBearerToken(request);
 
