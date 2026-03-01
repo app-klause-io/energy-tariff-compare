@@ -202,7 +202,17 @@
 		</main>
 	{:else if showResults}
 		<main class="flex flex-1 flex-col">
-			<ResultsView {results} {annualKwh} {dailyProfile} onReset={resetWizard} />
+			<ResultsView
+				{results}
+				{annualKwh}
+				{dailyProfile}
+				onReset={resetWizard}
+				wizardSelections={{
+					property,
+					appliances: appliances.map((a) => ({ id: a.id, name: a.name, enabled: a.enabled })),
+					habits,
+				}}
+			/>
 		</main>
 	{:else}
 		<main class="flex flex-1 flex-col">
