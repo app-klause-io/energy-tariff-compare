@@ -276,7 +276,7 @@ export async function getTariffs(
 	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
 	const countQuery = `SELECT COUNT(*) as count FROM tariffs ${whereClause}`;
-	const countResult = (await sql.query(countQuery, params)) as { count: string }[];
+	const countResult = await sql.unsafe(countQuery, params);
 	const total = Number(countResult[0]?.count ?? 0);
 
 	const dataQuery = `
@@ -290,7 +290,7 @@ export async function getTariffs(
 		LIMIT $${params.length + 1} OFFSET $${params.length + 2}
 	`;
 
-	const tariffs = (await sql.query(dataQuery, [...params, limit, offset])) as TariffRecord[];
+	const tariffs = (await sql.unsafe(dataQuery, [...params, limit, offset])) as TariffRecord[];
 
 	return { tariffs, total };
 }
