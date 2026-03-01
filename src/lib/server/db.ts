@@ -97,7 +97,7 @@ export async function getFeedback(
 
 	// Get total count
 	const countQuery = `SELECT COUNT(*) as count FROM feedback ${whereClause}`;
-	const countResult = await sql.unsafe(countQuery, params);
+	const countResult = await sql(countQuery, params);
 	const total = Number(countResult[0]?.count ?? 0);
 
 	// Get feedback entries
@@ -111,7 +111,7 @@ export async function getFeedback(
 		LIMIT $${params.length + 1} OFFSET $${params.length + 2}
 	`;
 
-	const feedback = await sql.unsafe(dataQuery, [...params, limit, offset]);
+	const feedback = await sql(dataQuery, [...params, limit, offset]);
 
 	return { feedback: feedback as FeedbackRecord[], total };
 }
@@ -276,7 +276,7 @@ export async function getTariffs(
 	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
 	const countQuery = `SELECT COUNT(*) as count FROM tariffs ${whereClause}`;
-	const countResult = await sql.unsafe(countQuery, params);
+	const countResult = await sql(countQuery, params);
 	const total = Number(countResult[0]?.count ?? 0);
 
 	const dataQuery = `
@@ -290,7 +290,7 @@ export async function getTariffs(
 		LIMIT $${params.length + 1} OFFSET $${params.length + 2}
 	`;
 
-	const tariffs = (await sql.unsafe(dataQuery, [...params, limit, offset])) as TariffRecord[];
+	const tariffs = (await sql(dataQuery, [...params, limit, offset])) as TariffRecord[];
 
 	return { tariffs, total };
 }
