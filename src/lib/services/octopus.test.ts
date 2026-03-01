@@ -363,13 +363,17 @@ describe('Tariff code construction', () => {
 });
 
 describe('buildTariffCode', () => {
-	it('builds correct single-register tariff code', () => {
-		expect(buildTariffCode('AGILE-FLEX-22-11-25', '_C')).toBe('E-1R-AGILE-FLEX-22-11-25-_C');
+	it('builds correct single-register tariff code, stripping underscore prefix', () => {
+		expect(buildTariffCode('AGILE-FLEX-22-11-25', '_C')).toBe('E-1R-AGILE-FLEX-22-11-25-C');
 	});
 
 	it('builds correct code for different regions', () => {
-		expect(buildTariffCode('GO-VAR-22-10-14', '_A')).toBe('E-1R-GO-VAR-22-10-14-_A');
-		expect(buildTariffCode('GO-VAR-22-10-14', '_P')).toBe('E-1R-GO-VAR-22-10-14-_P');
+		expect(buildTariffCode('GO-VAR-22-10-14', '_A')).toBe('E-1R-GO-VAR-22-10-14-A');
+		expect(buildTariffCode('GO-VAR-22-10-14', '_P')).toBe('E-1R-GO-VAR-22-10-14-P');
+	});
+
+	it('handles gspGroupId without underscore prefix', () => {
+		expect(buildTariffCode('VAR-22-11-01', 'C')).toBe('E-1R-VAR-22-11-01-C');
 	});
 });
 
