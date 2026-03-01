@@ -5,12 +5,60 @@
 	interface Props {
 		results: ComparisonResult[];
 		annualKwh: number;
+		dailyProfile: number[];
 		onReset: () => void;
 	}
 
-	let { results, annualKwh, onReset }: Props = $props();
+	let { results, annualKwh, dailyProfile, onReset }: Props = $props();
 
 	let bestResult = $derived(results[0]);
+
+	interface TimePeriodBreakdown {
+		label: string;
+		kwh: number;
+		percent: number;
+	}
+
+	let consumptionBreakdown = $derived.by(() => {
+		if (!dailyProfile || dailyProfile.length !== 48) return null;
+
+		// Sum proportions for each time-of-day period
+		const periods = [
+			{ label: 'Overnight (00:00–07:00)', startSlot: 0, endSlot: 14 },
+			{ label: 'Morning (07:00–10:00)', startSlot: 14, endSlot: 20 },
+			{ label: 'Daytime (10:00–16:00)', startSlot: 20, endSlot: 32 },
+			{ label: 'Evening (16:00–00:00)', startSlot: 32, endSlot: 48 },
+		];
+
+		const breakdown: TimePeriodBreakdown[] = periods.map((p) => {
+			let proportion = 0;
+			for (let i = p.startSlot; i < p.endSlot; i++) {
+				proportion += dailyProfile[i];
+			}
+			const kwh = proportion * annualKwh;
+			return {
+				label: p.label,
+				kwh,
+				percent: proportion * 100,
+			};
+		});
+
+		// Day vs night split: Day = 07:00–21:00 (slots 14-42), Night = rest
+		let dayProportion = 0;
+		for (let i = 14; i < 42; i++) {
+			dayProportion += dailyProfile[i];
+		}
+		const dayKwh = dayProportion * annualKwh;
+		const nightKwh = annualKwh - dayKwh;
+
+		return {
+			periods: breakdown,
+			dayKwh,
+			nightKwh,
+			dayPercent: dayProportion * 100,
+			nightPercent: (1 - dayProportion) * 100,
+		};
+	});
 
 	function formatCurrency(amount: number): string {
 		return `£${Math.round(amount).toLocaleString()}`;
@@ -135,6 +183,58 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- Consumption Breakdown -->
+	{#if consumptionBreakdown}
+		<div class="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+			<div class="p-6">
+				<h3 class="text-lg font-semibold text-slate-900">Your Estimated Consumption</h3>
+				<p class="mt-1 text-sm text-slate-500">
+					{formatKwh(annualKwh)} per year, broken down by time of day
+				</p>
+
+				<div class="mt-4 space-y-2">
+					{#each consumptionBreakdown.periods as period (period.label)}
+						<div class="flex items-center justify-between rounded bg-slate-50 px-3 py-2 text-sm">
+							<span class="text-slate-700">{period.label}</span>
+							<div class="text-right">
+								<span class="font-medium text-slate-900">{formatKwh(period.kwh)}</span>
+								<span class="ml-2 text-xs text-slate-500"
+									>({Math.round(period.percent)}%)</span
+								>
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<div class="mt-4 border-t border-slate-200 pt-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+						Day vs Night split
+					</p>
+					<div class="mt-2 flex gap-4">
+						<div class="flex-1 rounded bg-amber-50 px-3 py-2 text-center">
+							<div class="text-sm font-medium text-amber-800">Day (07:00–21:00)</div>
+							<div class="mt-1 text-lg font-bold text-amber-700">
+								{formatKwh(consumptionBreakdown.dayKwh)}
+							</div>
+							<div class="text-xs text-amber-600">
+								{Math.round(consumptionBreakdown.dayPercent)}%
+							</div>
+						</div>
+						<div class="flex-1 rounded bg-indigo-50 px-3 py-2 text-center">
+							<div class="text-sm font-medium text-indigo-800">Night (21:00–07:00)</div>
+							<div class="mt-1 text-lg font-bold text-indigo-700">
+								{formatKwh(consumptionBreakdown.nightKwh)}
+							</div>
+							<div class="text-xs text-indigo-600">
+								{Math.round(consumptionBreakdown.nightPercent)}%
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- All Tariffs List -->
 	<div class="mt-8">

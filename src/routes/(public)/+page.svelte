@@ -33,6 +33,7 @@
 
 	let results = $state<ComparisonResult[]>([]);
 	let annualKwh = $state(0);
+	let dailyProfile = $state<number[]>([]);
 	let isCalculating = $state(false);
 	let calculationError = $state<string | null>(null);
 
@@ -71,6 +72,7 @@
 		try {
 			const profile = calculateConsumption(property, appliances, habits);
 			annualKwh = profile.annualKwh;
+			dailyProfile = profile.dailyProfile;
 
 			const response = await fetch(`/api/tariffs?region=${property.region}`);
 			if (!response.ok) {
@@ -105,6 +107,7 @@
 		};
 		results = [];
 		annualKwh = 0;
+		dailyProfile = [];
 		calculationError = null;
 	}
 </script>
@@ -199,7 +202,7 @@
 		</main>
 	{:else if showResults}
 		<main class="flex flex-1 flex-col">
-			<ResultsView {results} {annualKwh} onReset={resetWizard} />
+			<ResultsView {results} {annualKwh} {dailyProfile} onReset={resetWizard} />
 		</main>
 	{:else}
 		<main class="flex flex-1 flex-col">
