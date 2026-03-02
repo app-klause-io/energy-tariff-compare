@@ -182,7 +182,7 @@
 	</header>
 
 	{#if !showWizard && !showResults}
-		<main class="flex flex-1 items-center justify-center px-4 sm:px-6 lg:px-8">
+		<main class="flex flex-1 items-center justify-center px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
 			<div class="mx-auto max-w-2xl text-center">
 				<div
 					class="inline-block rounded-full bg-emerald-100 px-4 py-1.5 text-sm font-medium text-emerald-700"
