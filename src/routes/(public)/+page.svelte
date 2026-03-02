@@ -302,5 +302,9 @@
 		<p class="text-xs text-slate-400">
 			&copy; {new Date().getFullYear()} Best Energy Tariffs. All rights reserved.
 		</p>
+		<p class="mt-2 text-xs text-slate-400">
+			For informational purposes only — not financial advice. Estimated costs may differ from
+			actual bills.
+		</p>
 	</footer>
 </div>
