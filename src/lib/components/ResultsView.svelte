@@ -344,6 +344,18 @@
 		</div>
 	</div>
 
+	<!-- Disclaimer -->
+	<div class="mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+		<p class="text-xs leading-relaxed text-amber-800">
+			<span class="font-semibold">Important:</span> The costs shown are estimates based on
+			typical usage patterns for your property type. Actual costs will vary depending on your
+			real energy consumption. This tool is for informational purposes only and does not
+			constitute financial advice. Always check the provider's website for the latest tariff
+			details before switching. Tariff data is sourced from Octopus Energy, TheEnergyShop, and
+			Ofgem and may not reflect the very latest prices.
+		</p>
+	</div>
+
 	<!-- Feedback -->
 	{#if wizardSelections}
 		<FeedbackSection
