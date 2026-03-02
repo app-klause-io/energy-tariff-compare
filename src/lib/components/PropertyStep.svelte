@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PropertyType, UkRegion, PropertyDetails } from '$lib/types/wizard';
+	import type { PropertyType, UkRegion, InsulationQuality, PropertyDetails } from '$lib/types/wizard';
 	import { UK_REGIONS } from '$lib/data/regions';
 
 	interface Props {
@@ -18,6 +18,12 @@
 	const bedroomOptions = [1, 2, 3, 4, 5];
 	const occupantOptions = [1, 2, 3, 4];
 
+	const insulationOptions: { value: InsulationQuality; label: string }[] = [
+		{ value: 'well-insulated', label: 'Well insulated' },
+		{ value: 'average', label: 'Average' },
+		{ value: 'draughty', label: 'Draughty' },
+	];
+
 	function selectPropertyType(type: PropertyType) {
 		property.type = type;
 	}
@@ -33,6 +39,14 @@
 	function selectRegion(event: Event) {
 		const target = event.target as HTMLSelectElement;
 		property.region = (target.value || null) as UkRegion | null;
+	}
+
+	function setHasGas(value: boolean) {
+		property.hasGas = value;
+	}
+
+	function selectInsulation(value: InsulationQuality) {
+		property.insulation = value;
 	}
 </script>
 
@@ -123,4 +137,58 @@
 			{/each}
 		</select>
 	</div>
+
+	<div>
+		<h2 class="text-lg font-semibold text-slate-900" id="has-gas-label">
+			Does your property have gas?
+		</h2>
+		<div class="mt-3 flex flex-wrap gap-2" role="group" aria-labelledby="has-gas-label">
+			<button
+				type="button"
+				onclick={() => setHasGas(true)}
+				class="flex h-11 min-w-[80px] items-center justify-center rounded-full px-6 text-sm font-medium transition-colors duration-150
+				{property.hasGas
+					? 'bg-emerald-600 text-white'
+					: 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
+				aria-pressed={property.hasGas}
+			>
+				Yes
+			</button>
+			<button
+				type="button"
+				onclick={() => setHasGas(false)}
+				class="flex h-11 min-w-[80px] items-center justify-center rounded-full px-6 text-sm font-medium transition-colors duration-150
+				{!property.hasGas
+					? 'bg-emerald-600 text-white'
+					: 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
+				aria-pressed={!property.hasGas}
+			>
+				No
+			</button>
+		</div>
+	</div>
+
+	{#if property.hasGas}
+		<div>
+			<h2 class="text-lg font-semibold text-slate-900" id="insulation-label">
+				How well insulated is your home?
+			</h2>
+			<p class="mt-1 text-sm text-slate-500">This affects your heating cost estimate</p>
+			<div class="mt-3 flex flex-wrap gap-2" role="group" aria-labelledby="insulation-label">
+				{#each insulationOptions as opt (opt.value)}
+					<button
+						type="button"
+						onclick={() => selectInsulation(opt.value)}
+						class="flex h-11 items-center justify-center rounded-full px-5 text-sm font-medium transition-colors duration-150
+						{property.insulation === opt.value
+							? 'bg-emerald-600 text-white'
+							: 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
+						aria-pressed={property.insulation === opt.value}
+					>
+						{opt.label}
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>

@@ -35,6 +35,15 @@ const APPLIANCE_SUB_OPTION_KWH: Record<string, Record<string, number>> = {
 	'hot-tub': { regular: 3000, occasional: 1800 },
 };
 
+export interface GasConsumptionProfile {
+	annualKwh: number;
+	breakdown: {
+		baseKwh: number;
+		applianceKwh: number;
+		totalKwh: number;
+	};
+}
+
 export interface ConsumptionProfile {
 	annualKwh: number;
 	dailyProfile: number[];
@@ -49,6 +58,7 @@ export interface ConsumptionProfile {
 		applianceKwh: number;
 		totalKwh: number;
 	};
+	gas?: GasConsumptionProfile;
 }
 
 /**
@@ -348,6 +358,95 @@ function getApplianceKwh(appliance: Appliance): number {
 	return baseKwh * getUsageMultiplier(appliance);
 }
 
+// ── Gas consumption constants ────────────────────────────────────────────────
+
+const GAS_BASE_KWH: Record<string, number> = {
+	flat: 8000,
+	terrace: 11000,
+	'semi-detached': 13000,
+	detached: 17000,
+};
+const DEFAULT_GAS_BASE_KWH = 11500;
+const GAS_KWH_PER_EXTRA_BEDROOM = 800;
+const GAS_KWH_PER_EXTRA_OCCUPANT = 400;
+const INSULATION_FACTOR: Record<string, number> = {
+	'well-insulated': 0.8,
+	average: 1.0,
+	draughty: 1.3,
+};
+const MIN_GAS_ANNUAL_KWH = 500;
+
+const GAS_APPLIANCE_SUB_OPTION_KWH: Record<string, Record<string, number>> = {
+	'gas-boiler': { combi: 12000, system: 13000, 'back-boiler': 15000 },
+};
+
+function getUsageMultiplierForGas(appliance: Appliance): number {
+	if (!appliance.usageOptions) return 1.0;
+	const selected = appliance.selectedUsage ?? appliance.usageOptions.defaultValue;
+	const preset = appliance.usageOptions.presets.find((p) => p.value === selected);
+	return preset?.multiplier ?? 1.0;
+}
+
+/**
+ * Calculate gas consumption profile from property details and gas appliances.
+ */
+export function calculateGasConsumption(
+	property: PropertyDetails,
+	appliances: Appliance[],
+): GasConsumptionProfile {
+	if (!property.hasGas) {
+		return { annualKwh: 0, breakdown: { baseKwh: 0, applianceKwh: 0, totalKwh: 0 } };
+	}
+
+	const gasAppliances = appliances.filter((a) => a.category === 'gas' && a.enabled);
+
+	// If no gas appliances selected but hasGas=true, return 0
+	if (gasAppliances.length === 0) {
+		return { annualKwh: 0, breakdown: { baseKwh: 0, applianceKwh: 0, totalKwh: 0 } };
+	}
+
+	// Base from property type (only if boiler selected)
+	const hasBoiler = gasAppliances.some((a) => a.id === 'gas-boiler');
+	let baseKwh = 0;
+	if (hasBoiler) {
+		baseKwh = property.type
+			? (GAS_BASE_KWH[property.type] ?? DEFAULT_GAS_BASE_KWH)
+			: DEFAULT_GAS_BASE_KWH;
+		const extraBedrooms = Math.max(0, property.bedrooms - 2);
+		baseKwh += extraBedrooms * GAS_KWH_PER_EXTRA_BEDROOM;
+		const extraOccupants = Math.max(0, property.occupants - 2);
+		baseKwh += extraOccupants * GAS_KWH_PER_EXTRA_OCCUPANT;
+		baseKwh *= INSULATION_FACTOR[property.insulation] ?? 1.0;
+	}
+
+	// Appliance additions (non-boiler gas appliances add their own kWh)
+	let applianceKwh = 0;
+	for (const appliance of gasAppliances) {
+		if (appliance.id === 'gas-boiler') continue;
+		let kwhBase = appliance.annualKwhEstimate;
+		const subMap = GAS_APPLIANCE_SUB_OPTION_KWH[appliance.id];
+		if (subMap && appliance.selectedSubOption) {
+			kwhBase = subMap[appliance.selectedSubOption] ?? kwhBase;
+		}
+		const multiplier = getUsageMultiplierForGas(appliance);
+		applianceKwh += kwhBase * multiplier;
+	}
+
+	// For the boiler, use its usage multiplier on the base
+	if (hasBoiler) {
+		const boiler = gasAppliances.find((a) => a.id === 'gas-boiler')!;
+		const multiplier = getUsageMultiplierForGas(boiler);
+		baseKwh *= multiplier;
+	}
+
+	const totalKwh = Math.max(MIN_GAS_ANNUAL_KWH, baseKwh + applianceKwh);
+
+	return {
+		annualKwh: totalKwh,
+		breakdown: { baseKwh, applianceKwh, totalKwh },
+	};
+}
+
 /**
  * Calculate the total annual consumption and daily profile from wizard inputs.
  */
@@ -421,6 +520,8 @@ export function calculateConsumption(
 		summerFactor += 0.2;
 	}
 
+	const gasProfile = calculateGasConsumption(property, appliances);
+
 	return {
 		annualKwh: totalKwh,
 		dailyProfile: profile,
@@ -435,5 +536,6 @@ export function calculateConsumption(
 			applianceKwh,
 			totalKwh,
 		},
+		gas: gasProfile.annualKwh > 0 ? gasProfile : undefined,
 	};
 }
