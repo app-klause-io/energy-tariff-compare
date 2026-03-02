@@ -348,7 +348,7 @@
 	{#if wizardSelections}
 		<FeedbackSection
 			bestTariff={bestResult.tariff.name}
-			annualCost={bestResult.annualCost}
+			annualCost={bestResult.totalCost ?? bestResult.annualCost}
 			{wizardSelections}
 		/>
 	{/if}

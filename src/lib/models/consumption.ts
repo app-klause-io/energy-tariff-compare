@@ -406,12 +406,18 @@ export function calculateGasConsumption(
 	}
 
 	// Base from property type (only if boiler selected)
-	const hasBoiler = gasAppliances.some((a) => a.id === 'gas-boiler');
+	const boiler = gasAppliances.find((a) => a.id === 'gas-boiler');
 	let baseKwh = 0;
-	if (hasBoiler) {
+	if (boiler) {
 		baseKwh = property.type
 			? (GAS_BASE_KWH[property.type] ?? DEFAULT_GAS_BASE_KWH)
 			: DEFAULT_GAS_BASE_KWH;
+		// Adjust base for boiler type (back boilers and system boilers are less efficient)
+		const boilerSubMap = GAS_APPLIANCE_SUB_OPTION_KWH['gas-boiler'];
+		if (boilerSubMap && boiler.selectedSubOption) {
+			const boilerFactor = (boilerSubMap[boiler.selectedSubOption] ?? 12000) / 12000;
+			baseKwh *= boilerFactor;
+		}
 		const extraBedrooms = Math.max(0, property.bedrooms - 2);
 		baseKwh += extraBedrooms * GAS_KWH_PER_EXTRA_BEDROOM;
 		const extraOccupants = Math.max(0, property.occupants - 2);
@@ -433,8 +439,7 @@ export function calculateGasConsumption(
 	}
 
 	// For the boiler, use its usage multiplier on the base
-	if (hasBoiler) {
-		const boiler = gasAppliances.find((a) => a.id === 'gas-boiler')!;
+	if (boiler) {
 		const multiplier = getUsageMultiplierForGas(boiler);
 		baseKwh *= multiplier;
 	}
@@ -470,9 +475,10 @@ export function calculateConsumption(
 
 	const baseKwh = baseFromType + bedroomKwh + occupantKwh;
 
-	// Appliance additions
+	// Appliance additions (electricity only — exclude gas-category appliances)
+	const electricAppliances = appliances.filter((a) => a.category !== 'gas');
 	let applianceKwh = 0;
-	for (const appliance of appliances) {
+	for (const appliance of electricAppliances) {
 		if (appliance.enabled) {
 			applianceKwh += getApplianceKwh(appliance);
 		}
@@ -481,9 +487,9 @@ export function calculateConsumption(
 	// Total with floor
 	const totalKwh = Math.max(MIN_ANNUAL_KWH, baseKwh + applianceKwh);
 
-	// Daily profile
+	// Daily profile (electricity appliances only)
 	let profile = generateBaseProfile(habits.pattern);
-	profile = overlayApplianceProfiles(profile, appliances, totalKwh);
+	profile = overlayApplianceProfiles(profile, electricAppliances, totalKwh);
 
 	if (habits.overnightAppliances) {
 		profile = applyOvernightShift(profile);
