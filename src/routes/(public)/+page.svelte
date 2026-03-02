@@ -4,6 +4,7 @@
 	import { DEFAULT_APPLIANCES } from '$lib/data/appliances';
 	import { calculateConsumption } from '$lib/models/consumption';
 	import { compareTariffsWithData } from '$lib/models/comparison';
+	import { tick } from 'svelte';
 	import { track } from '@vercel/analytics';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import WizardStepper from '$lib/components/WizardStepper.svelte';
@@ -51,7 +52,8 @@
 		return false;
 	});
 
-	function scrollToTop() {
+	async function scrollToTop() {
+		await tick();
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
