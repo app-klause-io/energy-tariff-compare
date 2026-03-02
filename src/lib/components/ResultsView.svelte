@@ -7,6 +7,7 @@
 	interface Props {
 		results: ComparisonResult[];
 		annualKwh: number;
+		gasKwh?: number;
 		dailyProfile: number[];
 		onReset: () => void;
 		wizardSelections?: {
@@ -16,7 +17,9 @@
 		};
 	}
 
-	let { results, annualKwh, dailyProfile, onReset, wizardSelections }: Props = $props();
+	let { results, annualKwh, gasKwh = 0, dailyProfile, onReset, wizardSelections }: Props = $props();
+
+	let hasGasResults = $derived(gasKwh > 0 && results.some((r) => r.gasCost !== undefined));
 
 	let bestResult = $derived(results[0]);
 
@@ -130,9 +133,11 @@
 			We found your cheapest tariff
 		</h1>
 		<p class="mt-2 text-lg text-slate-500">
-			Based on your estimated annual usage of <span class="font-semibold text-slate-700"
+			Based on your estimated annual electricity usage of <span class="font-semibold text-slate-700"
 				>{formatKwh(annualKwh)}</span
-			>
+			>{#if gasKwh > 0}
+				{' '}and gas usage of <span class="font-semibold text-slate-700">{formatKwh(gasKwh)}</span
+				>{/if}
 		</p>
 	</div>
 
@@ -150,12 +155,44 @@
 					<p class="mt-1 text-sm font-medium text-slate-600">{bestResult.tariff.supplier}</p>
 				</div>
 				<div class="text-right">
-					<div class="text-3xl font-bold text-emerald-700">
-						{formatCurrency(bestResult.annualCost)}
-					</div>
-					<div class="text-sm text-slate-500">per year</div>
+					{#if hasGasResults && bestResult.totalCost !== undefined}
+						<div class="text-3xl font-bold text-emerald-700">
+							{formatCurrency(bestResult.totalCost)}
+						</div>
+						<div class="text-sm text-slate-500">per year (total)</div>
+					{:else}
+						<div class="text-3xl font-bold text-emerald-700">
+							{formatCurrency(bestResult.annualCost)}
+						</div>
+						<div class="text-sm text-slate-500">per year</div>
+					{/if}
 				</div>
 			</div>
+
+			{#if hasGasResults}
+				<div class="mt-4 flex gap-3">
+					<div class="flex-1 rounded-md bg-white px-3 py-2 text-center">
+						<div class="text-xs font-medium text-slate-500">Electricity</div>
+						<div class="mt-0.5 text-lg font-bold text-slate-900">
+							{formatCurrency(bestResult.annualCost)}
+						</div>
+					</div>
+					<div class="flex-1 rounded-md bg-white px-3 py-2 text-center">
+						<div class="text-xs font-medium text-slate-500">Gas</div>
+						<div class="mt-0.5 text-lg font-bold text-slate-900">
+							{bestResult.gasCost !== undefined ? formatCurrency(bestResult.gasCost) : 'N/A'}
+						</div>
+					</div>
+					{#if bestResult.totalCost !== undefined}
+						<div class="flex-1 rounded-md bg-emerald-100 px-3 py-2 text-center">
+							<div class="text-xs font-medium text-emerald-600">Total</div>
+							<div class="mt-0.5 text-lg font-bold text-emerald-700">
+								{formatCurrency(bestResult.totalCost)}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			{#if bestResult.savingsVsWorst > 0}
 				<div class="mt-4 rounded-md bg-white px-4 py-3">
@@ -271,13 +308,29 @@
 											{getTariffExplanation(result)}
 										</p>
 									{/if}
+									{#if hasGasResults}
+										<p class="mt-1 text-xs text-slate-500">
+											Electricity: {formatCurrency(result.annualCost)} |
+											Gas: {result.gasCost !== undefined ? formatCurrency(result.gasCost) : 'N/A'}
+											{#if result.gasCost === undefined}
+												<span class="text-slate-400">(no gas tariff for this provider)</span>
+											{/if}
+										</p>
+									{/if}
 								</div>
 							</div>
 							<div class="text-right">
-								<div class="text-xl font-bold text-slate-900">
-									{formatCurrency(result.annualCost)}
-								</div>
-								<div class="text-xs text-slate-500">per year</div>
+								{#if hasGasResults && result.totalCost !== undefined}
+									<div class="text-xl font-bold text-slate-900">
+										{formatCurrency(result.totalCost)}
+									</div>
+									<div class="text-xs text-slate-500">total per year</div>
+								{:else}
+									<div class="text-xl font-bold text-slate-900">
+										{formatCurrency(result.annualCost)}
+									</div>
+									<div class="text-xs text-slate-500">per year</div>
+								{/if}
 								{#if result.savingsVsWorst > 0}
 									<div class="mt-1 text-xs font-medium text-emerald-600">
 										Save {formatCurrency(result.savingsVsWorst)}
@@ -295,7 +348,7 @@
 	{#if wizardSelections}
 		<FeedbackSection
 			bestTariff={bestResult.tariff.name}
-			annualCost={bestResult.annualCost}
+			annualCost={bestResult.totalCost ?? bestResult.annualCost}
 			{wizardSelections}
 		/>
 	{/if}

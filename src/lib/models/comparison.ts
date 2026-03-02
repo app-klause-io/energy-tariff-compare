@@ -117,33 +117,86 @@ export function compareTariffs(profile: ConsumptionProfile, region: UkRegion): C
 }
 
 /**
+ * Calculate the annual cost of gas consumption on a given gas tariff.
+ * Gas is always flat rate.
+ */
+export function calculateGasTariffCost(gasKwh: number, tariff: Tariff): number {
+	const standingChargeCost = (tariff.standingCharge * 365) / 100;
+	const unitRate = tariff.rates[0]?.unitRate ?? 0;
+	const energyCost = (gasKwh * unitRate) / 100;
+	return standingChargeCost + energyCost;
+}
+
+/**
  * Compare a consumption profile against a provided set of tariffs.
+ * Optionally include gas tariffs for dual-fuel comparison.
  * Use this with live API data or any pre-fetched tariff set.
  * Returns results sorted by annual cost (cheapest first).
  */
 export function compareTariffsWithData(
 	profile: ConsumptionProfile,
 	tariffs: Tariff[],
+	gasTariffs?: Tariff[],
 ): ComparisonResult[] {
 	if (tariffs.length === 0) return [];
+
+	const hasGasData = gasTariffs && gasTariffs.length > 0 && profile.gas;
+	const gasKwh = profile.gas?.annualKwh ?? 0;
+
+	// Pre-calculate gas costs by supplier for matching
+	const gasCostBySupplier = new Map<string, { cost: number; tariff: Tariff }>();
+	if (hasGasData && gasTariffs) {
+		for (const gasTariff of gasTariffs) {
+			const cost = calculateGasTariffCost(gasKwh, gasTariff);
+			const existing = gasCostBySupplier.get(gasTariff.supplier);
+			// Keep the cheapest gas tariff per supplier
+			if (!existing || cost < existing.cost) {
+				gasCostBySupplier.set(gasTariff.supplier, { cost, tariff: gasTariff });
+			}
+		}
+	}
 
 	const results: ComparisonResult[] = tariffs.map((tariff) => {
 		const annualCost = calculateTariffCost(profile, tariff);
 		const breakdown = calculateTariffCostBreakdown(profile, tariff);
 
+		const gasMatch = hasGasData ? gasCostBySupplier.get(tariff.supplier) : undefined;
+		const gasCost = gasMatch?.cost;
+		const totalCost = gasCost !== undefined ? annualCost + gasCost : undefined;
+
 		return {
 			tariff,
 			annualCost,
+			gasCost,
+			totalCost,
 			savingsVsWorst: 0,
 			breakdown,
 		};
 	});
 
-	results.sort((a, b) => a.annualCost - b.annualCost);
+	// Sort by totalCost if gas data exists, else by annualCost
+	if (hasGasData) {
+		results.sort((a, b) => {
+			const costA = a.totalCost ?? a.annualCost;
+			const costB = b.totalCost ?? b.annualCost;
+			return costA - costB;
+		});
+	} else {
+		results.sort((a, b) => a.annualCost - b.annualCost);
+	}
 
-	const worstCost = results[results.length - 1].annualCost;
-	for (const result of results) {
-		result.savingsVsWorst = worstCost - result.annualCost;
+	// Calculate savingsVsWorst based on the sort metric
+	if (results.length > 0) {
+		const worstResult = results[results.length - 1];
+		const worstCost = hasGasData
+			? (worstResult.totalCost ?? worstResult.annualCost)
+			: worstResult.annualCost;
+		for (const result of results) {
+			const resultCost = hasGasData
+				? (result.totalCost ?? result.annualCost)
+				: result.annualCost;
+			result.savingsVsWorst = worstCost - resultCost;
+		}
 	}
 
 	return results;

@@ -252,6 +252,71 @@ export const DEFAULT_APPLIANCES: Appliance[] = [
 		},
 	},
 
+	// ── Gas ─────────────────────────────────────────────────────
+	{
+		id: 'gas-boiler',
+		name: 'Gas Boiler',
+		icon: '🔥',
+		category: 'gas',
+		enabled: false,
+		annualKwhEstimate: 12000,
+		description: 'Central heating boiler',
+		subOptions: {
+			label: 'Boiler type',
+			value: 'combi',
+			options: [
+				{ label: 'Combi', value: 'combi' },
+				{ label: 'System', value: 'system' },
+				{ label: 'Back boiler', value: 'back-boiler' },
+			],
+		},
+		usageOptions: {
+			question: 'How many months is heating active?',
+			presets: [
+				{ label: 'Winter only (5 months)', value: 'light', multiplier: 0.6, kwhPerYear: 7200 },
+				{ label: 'Extended (8 months)', value: 'medium', multiplier: 1.0, kwhPerYear: 12000 },
+				{ label: 'Year-round', value: 'heavy', multiplier: 1.3, kwhPerYear: 15600 },
+			],
+			defaultValue: 'medium',
+		},
+	},
+	{
+		id: 'gas-hob',
+		name: 'Gas Hob',
+		icon: '🍳',
+		category: 'gas',
+		enabled: false,
+		annualKwhEstimate: 500,
+		description: 'Gas cooktop / stovetop',
+		usageOptions: {
+			question: 'How often do you cook?',
+			presets: [
+				{ label: 'Light (3 meals/week)', value: 'light', multiplier: 0.6, kwhPerYear: 300 },
+				{ label: 'Medium (5 meals/week)', value: 'medium', multiplier: 1.0, kwhPerYear: 500 },
+				{ label: 'Heavy (daily)', value: 'heavy', multiplier: 1.4, kwhPerYear: 700 },
+			],
+			defaultValue: 'medium',
+		},
+	},
+	{
+		id: 'gas-fire',
+		name: 'Gas Fire',
+		icon: '🪵',
+		category: 'gas',
+		enabled: false,
+		annualKwhEstimate: 3000,
+		description: 'Gas fireplace or room heater',
+		usageOptions: {
+			question: 'How often is it used?',
+			presets: [
+				{ label: 'Occasional (weekends)', value: 'light', multiplier: 0.5, kwhPerYear: 1500 },
+				{ label: 'Regular (evenings)', value: 'medium', multiplier: 1.0, kwhPerYear: 3000 },
+				{ label: 'Daily', value: 'heavy', multiplier: 1.5, kwhPerYear: 4500 },
+			],
+			defaultValue: 'medium',
+		},
+	},
+
 	// ── Other ────────────────────────────────────────────────────
 	{
 		id: 'hot-tub',

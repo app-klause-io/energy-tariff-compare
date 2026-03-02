@@ -140,6 +140,77 @@ export function convertStoredToTariffs(
 }
 
 /**
+ * Fetch stored gas tariffs for a given region and convert them to the Tariff format
+ * used by the comparison engine. Gas tariffs are simpler — always flat rate.
+ */
+export async function fetchStoredGasTariffsForRegion(region: UkRegion): Promise<Tariff[]> {
+	if (!tableReady) {
+		try {
+			await ensureTariffsTable();
+			tableReady = true;
+		} catch (err) {
+			logger.warn('storedTariffs.gasTableCheckFailed', {
+				error: err instanceof Error ? err.message : String(err),
+			});
+			return [];
+		}
+	}
+
+	try {
+		const result = await getTariffs({
+			region,
+			fuel_type: 'gas',
+			limit: 500,
+		});
+
+		// Find Ofgem cap gas standing charge for the region
+		let capStandingCharge = 0;
+		for (const record of result.tariffs) {
+			if (
+				record.provider === 'ofgem_cap' &&
+				record.region === region &&
+				record.payment_method === 'direct_debit' &&
+				record.standing_charge_p != null
+			) {
+				capStandingCharge = Number(record.standing_charge_p);
+				break;
+			}
+		}
+
+		// First pass: identify which providers have real EnergyShop data
+		const realProviders = new Set<string>();
+		for (const record of result.tariffs) {
+			if (record.source === 'theenergyshop') {
+				realProviders.add(record.provider);
+			}
+		}
+
+		const tariffs: Tariff[] = [];
+
+		for (const record of result.tariffs) {
+			tariffs.push(
+				...convertStoredToTariffs(record, region, capStandingCharge, realProviders),
+			);
+		}
+
+		logger.info('storedTariffs.gasFetched', {
+			region,
+			total: result.total,
+			converted: tariffs.length,
+			capStandingCharge,
+		});
+
+		return tariffs;
+	} catch (err) {
+		logger.warn('storedTariffs.gasFetchFailed', {
+			region,
+			error: err instanceof Error ? err.message : String(err),
+		});
+		return [];
+	}
+}
+
+/**
  * Fetch stored tariffs for a given region and convert them to the Tariff format
  * used by the comparison engine. Returns tariffs from all providers that have
  * data for the specified region, including national-average tariffs from

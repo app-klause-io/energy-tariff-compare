@@ -3,21 +3,29 @@
 
 	interface Props {
 		appliances: Appliance[];
+		hasGas?: boolean;
 	}
 
-	let { appliances = $bindable() }: Props = $props();
+	let { appliances = $bindable(), hasGas = false }: Props = $props();
 
-	const CATEGORY_CONFIG: { key: ApplianceCategory; label: string }[] = [
+	const ALL_CATEGORY_CONFIG: { key: ApplianceCategory; label: string }[] = [
 		{ key: 'heating', label: 'Heating & Hot Water' },
 		{ key: 'transport', label: 'Transport' },
 		{ key: 'generation', label: 'Generation' },
 		{ key: 'kitchen', label: 'Kitchen & Laundry' },
 		{ key: 'bathroom', label: 'Bathroom' },
+		{ key: 'gas', label: 'Gas' },
 		{ key: 'other', label: 'Other' },
 	];
 
+	let CATEGORY_CONFIG = $derived(
+		hasGas
+			? ALL_CATEGORY_CONFIG
+			: ALL_CATEGORY_CONFIG.filter((c) => c.key !== 'gas'),
+	);
+
 	let expandedCategories = $state<Set<ApplianceCategory>>(
-		new Set(['heating', 'transport', 'generation', 'kitchen', 'bathroom', 'other']),
+		new Set(['heating', 'transport', 'generation', 'kitchen', 'bathroom', 'gas', 'other']),
 	);
 
 	let groupedAppliances = $derived.by(() => {

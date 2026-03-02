@@ -23,6 +23,8 @@
 		bedrooms: 2,
 		occupants: 2,
 		region: null,
+		hasGas: true,
+		insulation: 'average',
 	});
 
 	let appliances = $state<Appliance[]>(DEFAULT_APPLIANCES.map((a) => ({ ...a })));
@@ -35,6 +37,7 @@
 
 	let results = $state<ComparisonResult[]>([]);
 	let annualKwh = $state(0);
+	let gasKwh = $state(0);
 	let dailyProfile = $state<number[]>([]);
 	let isCalculating = $state(false);
 	let calculationError = $state<string | null>(null);
@@ -89,6 +92,7 @@
 		try {
 			const profile = calculateConsumption(property, appliances, habits);
 			annualKwh = profile.annualKwh;
+			gasKwh = profile.gas?.annualKwh ?? 0;
 			dailyProfile = profile.dailyProfile;
 
 			const response = await fetch(`/api/tariffs?region=${property.region}`);
@@ -96,14 +100,16 @@
 				throw new Error(`Failed to fetch tariffs: ${response.status}`);
 			}
 			const data = await response.json();
+			const gasTariffs = data.gasTariffs ?? [];
 
-			results = compareTariffsWithData(profile, data.tariffs);
+			results = compareTariffsWithData(profile, data.tariffs, gasTariffs);
 			showResults = true;
 			scrollToTop();
 
 			track('funnel_results_viewed', {
 				region: property.region,
 				annualKwh: Math.round(profile.annualKwh),
+				gasKwh: Math.round(gasKwh),
 				tariffCount: results.length,
 				bestSupplier: results[0]?.tariff.supplier ?? 'unknown',
 			});
@@ -125,6 +131,8 @@
 			bedrooms: 2,
 			occupants: 2,
 			region: null,
+			hasGas: true,
+			insulation: 'average',
 		};
 		appliances = DEFAULT_APPLIANCES.map((a) => ({ ...a }));
 		habits = {
@@ -134,6 +142,7 @@
 		};
 		results = [];
 		annualKwh = 0;
+		gasKwh = 0;
 		dailyProfile = [];
 		calculationError = null;
 	}
@@ -231,6 +240,7 @@
 			<ResultsView
 				{results}
 				{annualKwh}
+				{gasKwh}
 				{dailyProfile}
 				onReset={resetWizard}
 				wizardSelections={{
@@ -270,7 +280,7 @@
 				{#if step === 1}
 					<PropertyStep bind:property />
 				{:else if step === 2}
-					<ApplianceStep bind:appliances />
+					<ApplianceStep bind:appliances hasGas={property.hasGas} />
 				{:else if step === 3}
 					<HabitsStep bind:habits />
 				{/if}

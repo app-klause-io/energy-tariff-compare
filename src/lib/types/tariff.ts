@@ -98,12 +98,24 @@ export interface Tariff {
 }
 
 /**
+ * Result of comparing a gas tariff against gas consumption.
+ */
+export interface GasComparisonResult {
+	tariff: Tariff;
+	annualCost: number;
+}
+
+/**
  * Result of comparing a consumption profile against a single tariff.
  */
 export interface ComparisonResult {
 	tariff: Tariff;
-	/** Total annual cost in pounds */
+	/** Total annual electricity cost in pounds */
 	annualCost: number;
+	/** Gas cost for this provider (if matched) */
+	gasCost?: number;
+	/** Electricity + gas combined */
+	totalCost?: number;
 	/** Annual savings vs the most expensive option in pounds (negative = more expensive) */
 	savingsVsWorst: number;
 	/** Breakdown of costs by component */

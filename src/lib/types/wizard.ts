@@ -16,11 +16,15 @@ export type UkRegion =
 	| 'west-midlands'
 	| 'yorkshire';
 
+export type InsulationQuality = 'well-insulated' | 'average' | 'draughty';
+
 export interface PropertyDetails {
 	type: PropertyType | null;
 	bedrooms: number;
 	occupants: number;
 	region: UkRegion | null;
+	hasGas: boolean;
+	insulation: InsulationQuality;
 }
 
 export interface ApplianceSubOption {
@@ -48,6 +52,7 @@ export type ApplianceCategory =
 	| 'generation'
 	| 'kitchen'
 	| 'bathroom'
+	| 'gas'
 	| 'other';
 
 export interface Appliance {

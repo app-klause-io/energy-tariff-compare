@@ -23,11 +23,15 @@ export const USAGE_PATTERNS = ['morning', 'daytime', 'evening', 'night'] as cons
 
 export const FLEXIBILITY_LEVELS = ['low', 'medium', 'high'] as const;
 
+export const INSULATION_QUALITIES = ['well-insulated', 'average', 'draughty'] as const;
+
 export const propertyDetailsSchema = z.object({
 	type: z.enum(PROPERTY_TYPES),
 	bedrooms: z.number().int().min(1).max(5),
 	occupants: z.number().int().min(1).max(4),
 	region: z.enum(UK_REGIONS),
+	hasGas: z.boolean().default(true),
+	insulation: z.enum(INSULATION_QUALITIES).default('average'),
 });
 
 const applianceSubOptionSchema = z.object({

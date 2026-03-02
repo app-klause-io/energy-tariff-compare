@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { Tariff } from '$lib/types/tariff';
 import { fetchTariffsForRegion, convertTariffInfoToTariff } from '$lib/services/octopus';
-import { fetchStoredTariffsForRegion } from '$lib/services/storedTariffs';
+import { fetchStoredTariffsForRegion, fetchStoredGasTariffsForRegion } from '$lib/services/storedTariffs';
 import { getTariffsForRegion as getFallbackTariffs } from '$lib/data/tariffs';
 import { UK_REGIONS } from '$lib/data/regions';
 import { logger } from '$lib/server/logger';
@@ -19,18 +19,21 @@ export const GET: RequestHandler = async ({ url }) => {
 		throw error(400, `Invalid region: ${region}`);
 	}
 
-	// Fetch live Octopus tariffs and stored tariffs (from DB) in parallel
-	const [octopusResult, storedResult] = await Promise.allSettled([
+	// Fetch live Octopus tariffs, stored electricity tariffs, and gas tariffs in parallel
+	const [octopusResult, storedResult, gasResult] = await Promise.allSettled([
 		fetchTariffsForRegion(validRegion.value).then((infos) =>
 			infos.map((info) => convertTariffInfoToTariff(info, validRegion.value)),
 		),
 		fetchStoredTariffsForRegion(validRegion.value),
+		fetchStoredGasTariffsForRegion(validRegion.value),
 	]);
 
 	const liveTariffs: Tariff[] =
 		octopusResult.status === 'fulfilled' ? octopusResult.value : [];
 	const dbTariffs: Tariff[] =
 		storedResult.status === 'fulfilled' ? storedResult.value : [];
+	const gasTariffs: Tariff[] =
+		gasResult.status === 'fulfilled' ? gasResult.value : [];
 
 	if (octopusResult.status === 'rejected') {
 		logger.error('tariffs.octopusFetchError', {
@@ -59,7 +62,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			source: 'merged',
 		});
 
-		return json({ tariffs: mergedTariffs, source: 'merged' });
+		return json({ tariffs: mergedTariffs, gasTariffs, source: 'merged' });
 	}
 
 	// Final fallback: hardcoded data
@@ -70,5 +73,5 @@ export const GET: RequestHandler = async ({ url }) => {
 		tariffCount: fallbackTariffs.length,
 	});
 
-	return json({ tariffs: fallbackTariffs, source: 'fallback' });
+	return json({ tariffs: fallbackTariffs, gasTariffs, source: 'fallback' });
 };
